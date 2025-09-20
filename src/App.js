@@ -23,7 +23,7 @@ const App = () => {
   const [transactions, setTransactions] = useState([]);
   const [csTokenBalance, setCsTokenBalance] = useState(0);
   const [connections, setConnections] = useState([]);
-  const [projectTokens, setProjectTokens] = useState([]);
+
   const [aiMatches, setAiMatches] = useState([]);
   const [userAnalysis, setUserAnalysis] = useState(null);
   const [chatAnalytics, setChatAnalytics] = useState(null);
@@ -178,21 +178,6 @@ const App = () => {
     return () => newSocket.close();
   }, [publicKey]);
 
-  useEffect(() => {
-    if (connected && publicKey) {
-      getWalletBalance();
-      // Load CS token balance from localStorage
-      const savedBalance = localStorage.getItem(`cs-balance-${publicKey.toString()}`);
-      if (savedBalance) {
-        setCsTokenBalance(parseInt(savedBalance));
-      }
-      
-      // Get AI matches and analytics
-      fetchAIMatches();
-      fetchChatAnalytics();
-    }
-  }, [connected, publicKey, getWalletBalance, fetchAIMatches, fetchChatAnalytics]);
-  
   const fetchAIMatches = async () => {
     try {
       const response = await fetch(`https://consilience-saas-production.up.railway.app/api/ai/matches/${publicKey.toString()}`);
@@ -217,6 +202,21 @@ const App = () => {
       console.error('Failed to fetch chat analytics:', error);
     }
   };
+
+  useEffect(() => {
+    if (connected && publicKey) {
+      getWalletBalance();
+      // Load CS token balance from localStorage
+      const savedBalance = localStorage.getItem(`cs-balance-${publicKey.toString()}`);
+      if (savedBalance) {
+        setCsTokenBalance(parseInt(savedBalance));
+      }
+      
+      // Get AI matches and analytics
+      fetchAIMatches();
+      fetchChatAnalytics();
+    }
+  }, [connected, publicKey, getWalletBalance]);
 
   useEffect(() => {
     // Save CS token balance
@@ -870,26 +870,7 @@ const App = () => {
                 <div style={{ fontSize: '10px', color: '#00ff00' }}>Earn: Chat +5-25, AI +10-100</div>
               </div>
               
-              <h3 style={{
-                margin: '15px 0 10px 0',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                color: '#ffffff',
-                textShadow: '0 0 20px #ffffff'
-              }}>Project Tokens</h3>
-              {projectTokens.map((token, i) => (
-                <div key={i} style={{
-                  backgroundColor: '#000000',
-                  padding: '10px',
-                  marginBottom: '8px',
-                  border: '2px solid #00ff00',
-                  fontSize: '12px'
-                }}>
-                  <div style={{ fontWeight: 'bold', color: '#00ff00' }}>{token.projectName}</div>
-                  <div>{token.symbol} - {token.allocation}</div>
-                  <div style={{ fontSize: '10px', opacity: 0.7 }}>AI Treasury: {token.aiHolding}</div>
-                </div>
-              ))}
+
               
               <h3 style={{
                 margin: '15px 0 10px 0',
