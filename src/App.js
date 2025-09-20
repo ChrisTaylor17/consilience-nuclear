@@ -58,6 +58,43 @@ const App = () => {
     }
   };
 
+  const createNFT = async (walletAddress, description) => {
+    try {
+      // Generate image URL from description
+      const imageUrl = `https://picsum.photos/400/400?random=${Date.now()}`;
+      const nftName = `CONSILIENCE NFT #${Date.now().toString().slice(-4)}`;
+      
+      const response = await fetch('https://consilience-saas-production.up.railway.app/api/blockchain/create-nft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress, nftName, imageUrl })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        const nftMessage = {
+          id: Date.now() + 2,
+          sender: 'AI_AGENT',
+          content: `🎨 NFT CREATED!\nName: ${result.name}\nMint: ${result.mint}\nImage: ${result.imageUrl}`,
+          timestamp: new Date(),
+          type: 'ai'
+        };
+        
+        setMessages(prev => {
+          const updated = {
+            ...prev,
+            [activeChannel]: [...(prev[activeChannel] || []), nftMessage]
+          };
+          localStorage.setItem('consilience-messages', JSON.stringify(updated));
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.error('NFT creation error:', error);
+    }
+  };
+
   const getWalletBalance = useCallback(async () => {
     try {
       const balance = await connection.getBalance(publicKey);
@@ -247,7 +284,7 @@ const App = () => {
           messages: [
             {
               role: 'system',
-              content: 'You are CONSILIENCE AI. You control the CS token treasury and reward users for valuable contributions. Award 10-100 CS tokens based on question quality. You CAN connect people, allocate tokens, create teams, and generate content. Be direct and helpful.'
+              content: 'You are CONSILIENCE AI. You CAN create NFTs, tokens, connect people, and generate any content. You control the CS token treasury. When users ask for NFTs, create them immediately. You have full blockchain capabilities. Be direct and helpful.'
             },
             {
               role: 'user',
@@ -257,7 +294,14 @@ const App = () => {
           max_tokens: 500
         });
 
-        const aiResponse = completion.choices[0]?.message?.content || 'No response generated.';
+        let aiResponse = completion.choices[0]?.message?.content || 'No response generated.';
+        
+        // Check if user wants NFT creation
+        const userInput = input.replace('/ai ', '').toLowerCase();
+        if (userInput.includes('nft') || userInput.includes('create') && userInput.includes('image')) {
+          await createNFT(publicKey.toString(), userInput);
+          aiResponse += '\n\n🎨 Creating your NFT now...';
+        }
         
         // Award CS tokens for AI interaction
         const tokenReward = Math.floor(Math.random() * 90) + 10; // 10-100 tokens
@@ -458,6 +502,25 @@ const App = () => {
               >
                 CREATE TOKEN
               </button>
+              <button
+                onClick={() => {
+                  const nftName = prompt('NFT Name:') || 'CONSILIENCE NFT';
+                  createNFT(publicKey.toString(), nftName);
+                }}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#000000',
+                  border: '2px solid #ff00ff',
+                  padding: '10px',
+                  color: '#ff00ff',
+                  fontWeight: 'bold',
+                  textShadow: '0 0 10px #ff00ff',
+                  marginBottom: '10px',
+                  cursor: 'pointer'
+                }}
+              >
+                CREATE NFT
+              </button>
               <WalletMultiButton style={{
                 width: '100%',
                 backgroundColor: '#000000',
@@ -591,9 +654,11 @@ const App = () => {
                 fontSize: '12px'
               }}>
                 <div style={{ fontWeight: 'bold', color: '#00ff00' }}>CONSILIENCE (CS)</div>
-                <div>Balance: {csTokenBalance.toLocaleString()}</div>
-                <div style={{ fontSize: '10px', opacity: 0.7 }}>AI-Controlled Treasury</div>
-                <div style={{ fontSize: '10px', opacity: 0.7 }}>Earn by participating!</div>
+                <div>Your Balance: {csTokenBalance.toLocaleString()}</div>
+                <div style={{ fontSize: '10px', opacity: 0.7 }}>Total Supply: 1,000,000,000</div>
+                <div style={{ fontSize: '10px', opacity: 0.7 }}>Circulating: {(csTokenBalance * 1000).toLocaleString()}</div>
+                <div style={{ fontSize: '10px', opacity: 0.7 }}>AI Treasury: 999M+ CS</div>
+                <div style={{ fontSize: '10px', color: '#00ff00' }}>Earn: Chat +5-25, AI +10-100</div>
               </div>
               
               <h3 style={{
