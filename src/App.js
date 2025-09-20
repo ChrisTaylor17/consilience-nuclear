@@ -24,6 +24,9 @@ const App = () => {
   const [csTokenBalance, setCsTokenBalance] = useState(0);
   const [connections, setConnections] = useState([]);
   const [projectTokens, setProjectTokens] = useState([]);
+  const [aiMatches, setAiMatches] = useState([]);
+  const [userAnalysis, setUserAnalysis] = useState(null);
+  const [chatAnalytics, setChatAnalytics] = useState(null);
 
 
   
@@ -216,8 +219,37 @@ const App = () => {
       if (savedBalance) {
         setCsTokenBalance(parseInt(savedBalance));
       }
+      
+      // Get AI matches and analytics
+      fetchAIMatches();
+      fetchChatAnalytics();
     }
   }, [connected, publicKey, getWalletBalance]);
+  
+  const fetchAIMatches = async () => {
+    try {
+      const response = await fetch(`https://consilience-saas-production.up.railway.app/api/ai/matches/${publicKey.toString()}`);
+      const data = await response.json();
+      if (data.success) {
+        setAiMatches(data.matches || []);
+        setUserAnalysis(data.userProfile);
+      }
+    } catch (error) {
+      console.error('Failed to fetch AI matches:', error);
+    }
+  };
+  
+  const fetchChatAnalytics = async () => {
+    try {
+      const response = await fetch('https://consilience-saas-production.up.railway.app/api/ai/analytics');
+      const data = await response.json();
+      if (data.success) {
+        setChatAnalytics(data.analytics);
+      }
+    } catch (error) {
+      console.error('Failed to fetch chat analytics:', error);
+    }
+  };
 
   useEffect(() => {
     // Save CS token balance
@@ -348,27 +380,27 @@ const App = () => {
 
     if (input.toLowerCase().startsWith('/ai ')) {
       try {
-        const openai = new OpenAI({
-          apiKey: process.env.REACT_APP_OPENAI_API_KEY || 'your-openai-key',
-          dangerouslyAllowBrowser: true
+        // Use backend AI service for enhanced matching
+        const response = await fetch('https://consilience-saas-production.up.railway.app/api/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: input.replace('/ai ', ''),
+            walletAddress: publicKey.toString(),
+            currentChannel: { name: activeChannel }
+          })
         });
-
-        const completion = await openai.chat.completions.create({
-          model: 'gpt-4',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are CONSILIENCE AI. You CAN create NFTs, tokens, connect people, and generate any content. You control the CS token treasury. When users ask for NFTs, create them immediately. You have full blockchain capabilities. Be direct and helpful.'
-            },
-            {
-              role: 'user',
-              content: input.replace('/ai ', '')
-            }
-          ],
-          max_tokens: 500
-        });
-
-        let aiResponse = completion.choices[0]?.message?.content || 'No response generated.';
+        
+        const result = await response.json();
+        let aiResponse = result.response || 'AI response unavailable';
+        
+        // Update user analysis and matches
+        if (result.userAnalysis) {
+          setUserAnalysis(result.userAnalysis);
+        }
+        if (result.suggestedMatches) {
+          setAiMatches(result.suggestedMatches);
+        }
         
         // Check if user wants NFT creation
         const userInput = input.replace('/ai ', '').toLowerCase();
@@ -378,7 +410,7 @@ const App = () => {
         }
         
         // Award CS tokens for AI interaction
-        const tokenReward = Math.floor(Math.random() * 90) + 10; // 10-100 tokens
+        const tokenReward = Math.floor(Math.random() * 90) + 10;
         await awardTokens(publicKey.toString(), tokenReward, 'AI interaction');
         setCsTokenBalance(prev => prev + tokenReward);
         
@@ -390,7 +422,7 @@ const App = () => {
         const aiMessage = {
           id: Date.now() + 1,
           sender: 'AI_AGENT',
-          content: `${aiResponse}\n\n🪙 +${tokenReward} CS tokens awarded for your question!`,
+          content: `${aiResponse}\n\n🪙 +${tokenReward} CS tokens awarded!`,
           timestamp: new Date(),
           type: 'ai'
         };
@@ -408,22 +440,53 @@ const App = () => {
           socket.emit('message', { message: aiMessage, channel: activeChannel });
         }
       } catch (error) {
-        console.error('OpenAI error:', error);
-        const errorMessage = {
-          id: Date.now() + 1,
-          sender: 'AI_AGENT',
-          content: 'Please add your OpenAI API key to use the AI assistant.',
-          timestamp: new Date(),
-          type: 'ai'
-        };
-        setMessages(prev => {
-          const updated = {
-            ...prev,
-            [activeChannel]: [...(prev[activeChannel] || []), errorMessage]
+        console.error('AI service error:', error);
+        // Fallback to direct OpenAI
+        try {
+          const openai = new OpenAI({
+            apiKey: process.env.REACT_APP_OPENAI_API_KEY || 'your-openai-key',
+            dangerouslyAllowBrowser: true
+          });
+
+          const completion = await openai.chat.completions.create({
+            model: 'gpt-4',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are CONSILIENCE AI with full blockchain capabilities.'
+              },
+              {
+                role: 'user',
+                content: input.replace('/ai ', '')
+              }
+            ],
+            max_tokens: 500
+          });
+
+          const aiResponse = completion.choices[0]?.message?.content || 'No response generated.';
+          const tokenReward = Math.floor(Math.random() * 90) + 10;
+          await awardTokens(publicKey.toString(), tokenReward, 'AI interaction');
+          setCsTokenBalance(prev => prev + tokenReward);
+          
+          const aiMessage = {
+            id: Date.now() + 1,
+            sender: 'AI_AGENT',
+            content: `${aiResponse}\n\n🪙 +${tokenReward} CS tokens awarded!`,
+            timestamp: new Date(),
+            type: 'ai'
           };
-          localStorage.setItem('consilience-messages', JSON.stringify(updated));
-          return updated;
-        });
+
+          setMessages(prev => {
+            const updated = {
+              ...prev,
+              [activeChannel]: [...(prev[activeChannel] || []), aiMessage]
+            };
+            localStorage.setItem('consilience-messages', JSON.stringify(updated));
+            return updated;
+          });
+        } catch (fallbackError) {
+          console.error('Fallback AI error:', fallbackError);
+        }
       }
     }
 
@@ -677,7 +740,7 @@ const App = () => {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                  placeholder={`Message #${activeChannel}... (use /ai for AI)`}
+                  placeholder={`Message #${activeChannel}... (use /ai for AI matching)`}
                   style={{
                     flex: 1,
                     padding: '15px 20px',
@@ -721,6 +784,55 @@ const App = () => {
               <h3 style={{
                 margin: '0 0 15px 0',
                 fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#ffffff',
+                textShadow: '0 0 20px #ffffff'
+              }}>AI Analysis</h3>
+              {userAnalysis && (
+                <div style={{
+                  backgroundColor: '#000000',
+                  padding: '10px',
+                  marginBottom: '15px',
+                  border: '2px solid #00ffff',
+                  fontSize: '12px'
+                }}>
+                  <div style={{ fontWeight: 'bold', color: '#00ffff' }}>Your Profile</div>
+                  <div>Skills: {userAnalysis.skills.join(', ') || 'Learning...'}</div>
+                  <div>Interests: {userAnalysis.interests.join(', ') || 'Exploring...'}</div>
+                  <div>Style: {userAnalysis.messageStyle}</div>
+                  <div>Activity: {userAnalysis.activity} messages</div>
+                </div>
+              )}
+              
+              <h3 style={{
+                margin: '15px 0 10px 0',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                color: '#ffffff',
+                textShadow: '0 0 20px #ffffff'
+              }}>AI Matches</h3>
+              {aiMatches.slice(0, 3).map((match, i) => (
+                <div key={i} style={{
+                  backgroundColor: '#000000',
+                  padding: '10px',
+                  marginBottom: '8px',
+                  border: '2px solid #ff00ff',
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }} onClick={() => {
+                  const connectMsg = `/ai introduce me to ${match.walletAddress.slice(0,8)} for collaboration`;
+                  setInput(connectMsg);
+                }}>
+                  <div style={{ fontWeight: 'bold', color: '#ff00ff' }}>{match.walletAddress.slice(0,8)}...</div>
+                  <div>{Math.round(match.score*100)}% match</div>
+                  <div style={{ fontSize: '10px', opacity: 0.7 }}>Skills: {match.commonSkills.join(', ')}</div>
+                  <div style={{ fontSize: '10px', color: '#ff00ff' }}>Click to connect!</div>
+                </div>
+              ))}
+              
+              <h3 style={{
+                margin: '15px 0 10px 0',
+                fontSize: '14px',
                 fontWeight: 'bold',
                 color: '#ffffff',
                 textShadow: '0 0 20px #ffffff'
@@ -818,6 +930,28 @@ const App = () => {
               <h3 style={{
                 margin: '0 0 15px 0',
                 fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#ffffff',
+                textShadow: '0 0 20px #ffffff'
+              }}>Live Analytics</h3>
+              {chatAnalytics && (
+                <div style={{
+                  backgroundColor: '#000000',
+                  padding: '10px',
+                  marginBottom: '15px',
+                  border: '2px solid #00ff00',
+                  fontSize: '12px'
+                }}>
+                  <div style={{ fontWeight: 'bold', color: '#00ff00' }}>Platform Stats</div>
+                  <div>Active Users: {chatAnalytics.activeUsers}</div>
+                  <div>Total Messages: {chatAnalytics.totalMessages}</div>
+                  <div>Top Skills: {Object.keys(chatAnalytics.topSkills).slice(0,3).join(', ')}</div>
+                </div>
+              )}
+              
+              <h3 style={{
+                margin: '15px 0 10px 0',
+                fontSize: '14px',
                 fontWeight: 'bold',
                 color: '#ffffff',
                 textShadow: '0 0 20px #ffffff'
