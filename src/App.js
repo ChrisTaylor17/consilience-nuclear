@@ -11,8 +11,7 @@ const App = () => {
   const [taskInput, setTaskInput] = useState('');
   const [socket, setSocket] = useState(null);
   const [activeChannel, setActiveChannel] = useState('general');
-  const [profile, setProfile] = useState({ name: '', status: 'online' });
-  const [showProfile, setShowProfile] = useState(false);
+
   
   const channels = ['general', 'ai-chat', 'tasks', 'dev', 'random'];
 
@@ -144,7 +143,7 @@ const App = () => {
               cursor: 'pointer',
               transition: 'all 0.3s ease',
               ':hover': { backgroundColor: '#2a2a2a' }
-            }} onClick={() => setShowProfile(!showProfile)}>
+            }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{
                   width: '32px',
@@ -162,9 +161,9 @@ const App = () => {
                 </div>
                 <div>
                   <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
-                    {profile.name || publicKey?.toString().slice(0, 8)}
+                    {publicKey?.toString().slice(0, 8)}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#4CAF50' }}>● {profile.status}</div>
+                  <div style={{ fontSize: '12px', color: '#4CAF50' }}>● online</div>
                 </div>
               </div>
             </div>
