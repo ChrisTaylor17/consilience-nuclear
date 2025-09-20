@@ -178,7 +178,8 @@ const App = () => {
     return () => newSocket.close();
   }, [publicKey]);
 
-  const fetchAIMatches = async () => {
+  const fetchAIMatches = useCallback(async () => {
+    if (!publicKey) return;
     try {
       const response = await fetch(`https://consilience-saas-production.up.railway.app/api/ai/matches/${publicKey.toString()}`);
       const data = await response.json();
@@ -189,9 +190,9 @@ const App = () => {
     } catch (error) {
       console.error('Failed to fetch AI matches:', error);
     }
-  };
+  }, [publicKey]);
   
-  const fetchChatAnalytics = async () => {
+  const fetchChatAnalytics = useCallback(async () => {
     try {
       const response = await fetch('https://consilience-saas-production.up.railway.app/api/ai/analytics');
       const data = await response.json();
@@ -201,7 +202,7 @@ const App = () => {
     } catch (error) {
       console.error('Failed to fetch chat analytics:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (connected && publicKey) {
@@ -216,7 +217,7 @@ const App = () => {
       fetchAIMatches();
       fetchChatAnalytics();
     }
-  }, [connected, publicKey, getWalletBalance]);
+  }, [connected, publicKey, getWalletBalance, fetchAIMatches, fetchChatAnalytics]);
 
   useEffect(() => {
     // Save CS token balance
