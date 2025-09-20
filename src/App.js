@@ -64,7 +64,7 @@ const App = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:3001/api/create-token', {
+      const response = await fetch('https://consilience-saas-production.up.railway.app/api/create-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress: publicKey.toString() })
