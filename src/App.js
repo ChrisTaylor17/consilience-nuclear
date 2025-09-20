@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import '@primer/css/dist/primer.css';
 import io from 'socket.io-client';
 
 const App = () => {
@@ -11,6 +10,11 @@ const App = () => {
   const [tasks, setTasks] = useState([]);
   const [taskInput, setTaskInput] = useState('');
   const [socket, setSocket] = useState(null);
+  const [activeChannel, setActiveChannel] = useState('general');
+  const [profile, setProfile] = useState({ name: '', status: 'online' });
+  const [showProfile, setShowProfile] = useState(false);
+  
+  const channels = ['general', 'ai-chat', 'tasks', 'dev', 'random'];
 
   useEffect(() => {
     const newSocket = io('https://consilience-saas-production.up.railway.app');
@@ -89,6 +93,11 @@ const App = () => {
     setTaskInput('');
   };
 
+  const updateProfile = (name, status) => {
+    setProfile({ name, status });
+    setShowProfile(false);
+  };
+
   const toggleTask = (id) => {
     setTasks(prev => prev.map(task => 
       task.id === id ? { ...task, done: !task.done } : task
@@ -96,79 +105,352 @@ const App = () => {
   };
 
   return (
-    <div className="color-bg-default color-fg-default" style={{minHeight: '100vh', backgroundColor: 'black', color: 'white', padding: '20px'}}>
-      <div className="container-xl">
-        <div className="Header d-flex flex-justify-between flex-items-center mb-4">
-          <h1 className="h1-mktg">🚀 CONSILIENCE NUCLEAR - ZERO CACHE 🚀</h1>
-          <WalletMultiButton className="btn btn-primary" />
-        </div>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#0a0a0a',
+      color: 'white',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      display: 'flex'
+    }}>
+      {connected ? (
+        <>
+          {/* Sidebar */}
+          <div style={{
+            width: '240px',
+            backgroundColor: '#1a1a1a',
+            borderRight: '1px solid #333',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 0 20px rgba(255,255,255,0.1)'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '20px',
+              borderBottom: '1px solid #333',
+              textAlign: 'center'
+            }}>
+              <h1 style={{
+                fontSize: '18px',
+                fontWeight: 'bold',
+                margin: 0,
+                textShadow: '0 0 10px rgba(255,255,255,0.5)',
+                background: 'linear-gradient(45deg, #fff, #ccc)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}>🚀 CONSILIENCE</h1>
+            </div>
 
-        {connected ? (
-          <div className="d-flex" style={{gap: '20px', height: '80vh'}}>
-            {/* Chat */}
-            <div className="Box p-3 d-flex flex-column" style={{flex: '2', backgroundColor: 'rgba(0,0,0,0.8)'}}>
-              <h2 className="h2 mb-3">Chat</h2>
-              <div className="flex-1 overflow-auto mb-3">
-                {messages.map(msg => (
-                  <div key={msg.id} className="Box p-2 mb-2" style={{backgroundColor: 'rgba(255,255,255,0.1)'}}>
-                    <div className="text-small color-fg-muted">{msg.sender}</div>
-                    <div className="color-fg-default">{msg.content}</div>
+            {/* Profile */}
+            <div style={{
+              padding: '15px',
+              borderBottom: '1px solid #333',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              ':hover': { backgroundColor: '#2a2a2a' }
+            }} onClick={() => setShowProfile(!showProfile)}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  backgroundColor: '#4CAF50',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  boxShadow: '0 0 15px rgba(76, 175, 80, 0.5)'
+                }}>
+                  {publicKey?.toString().slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
+                    {profile.name || publicKey?.toString().slice(0, 8)}
                   </div>
-                ))}
+                  <div style={{ fontSize: '12px', color: '#4CAF50' }}>● {profile.status}</div>
+                </div>
               </div>
-              <div className="d-flex" style={{gap: '10px'}}>
+            </div>
+
+            {/* Channels */}
+            <div style={{ flex: 1, padding: '20px 0' }}>
+              <div style={{
+                fontSize: '12px',
+                color: '#888',
+                fontWeight: 'bold',
+                padding: '0 20px 10px',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
+              }}>Channels</div>
+              {channels.map(channel => (
+                <div
+                  key={channel}
+                  onClick={() => setActiveChannel(channel)}
+                  style={{
+                    padding: '8px 20px',
+                    cursor: 'pointer',
+                    backgroundColor: activeChannel === channel ? 'rgba(255,255,255,0.1)' : 'transparent',
+                    borderRight: activeChannel === channel ? '3px solid white' : 'none',
+                    transition: 'all 0.3s ease',
+                    fontSize: '14px',
+                    fontWeight: activeChannel === channel ? 'bold' : 'normal',
+                    textShadow: activeChannel === channel ? '0 0 10px rgba(255,255,255,0.8)' : 'none'
+                  }}
+                >
+                  # {channel}
+                </div>
+              ))}
+            </div>
+
+            {/* Wallet */}
+            <div style={{ padding: '20px', borderTop: '1px solid #333' }}>
+              <WalletMultiButton style={{
+                width: '100%',
+                backgroundColor: 'transparent',
+                border: '2px solid white',
+                borderRadius: '25px',
+                padding: '10px',
+                color: 'white',
+                fontWeight: 'bold',
+                boxShadow: '0 0 20px rgba(255,255,255,0.3)',
+                transition: 'all 0.3s ease'
+              }} />
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            {/* Top Bar */}
+            <div style={{
+              height: '60px',
+              backgroundColor: '#1a1a1a',
+              borderBottom: '1px solid #333',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0 30px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
+            }}>
+              <h2 style={{
+                margin: 0,
+                fontSize: '20px',
+                fontWeight: 'bold',
+                textShadow: '0 0 10px rgba(255,255,255,0.5)'
+              }}>#{activeChannel}</h2>
+            </div>
+
+            {/* Chat Area */}
+            <div style={{
+              flex: 1,
+              padding: '20px 30px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '15px'
+            }}>
+              {messages.map(msg => (
+                <div key={msg.id} style={{
+                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  padding: '15px 20px',
+                  borderRadius: '15px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                  transition: 'all 0.3s ease'
+                }}>
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#4CAF50',
+                    fontWeight: 'bold',
+                    marginBottom: '5px',
+                    textShadow: '0 0 5px rgba(76, 175, 80, 0.5)'
+                  }}>
+                    {msg.sender === 'AI_AGENT' ? '🤖 AI Assistant' : msg.sender?.slice(0, 8)}
+                  </div>
+                  <div style={{
+                    fontSize: '14px',
+                    lineHeight: '1.5',
+                    color: 'white'
+                  }}>{msg.content}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Input Area */}
+            <div style={{
+              padding: '20px 30px',
+              backgroundColor: '#1a1a1a',
+              borderTop: '1px solid #333'
+            }}>
+              <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                  className="form-control flex-1"
-                  style={{backgroundColor: 'black', borderColor: 'rgba(255,255,255,0.2)', color: 'white'}}
-                  placeholder="Type message... (use /ai for AI)"
+                  placeholder={`Message #${activeChannel}... (use /ai for AI)`}
+                  style={{
+                    flex: 1,
+                    padding: '15px 20px',
+                    backgroundColor: '#0a0a0a',
+                    border: '2px solid rgba(255,255,255,0.2)',
+                    borderRadius: '25px',
+                    color: 'white',
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'all 0.3s ease',
+                    boxShadow: '0 0 20px rgba(255,255,255,0.1)'
+                  }}
                 />
-                <button onClick={sendMessage} className="btn btn-outline">
+                <button
+                  onClick={sendMessage}
+                  style={{
+                    padding: '15px 25px',
+                    backgroundColor: 'white',
+                    color: 'black',
+                    border: 'none',
+                    borderRadius: '25px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    boxShadow: '0 0 20px rgba(255,255,255,0.3)',
+                    fontSize: '14px'
+                  }}
+                >
                   Send
                 </button>
               </div>
             </div>
+          </div>
 
-            {/* Tasks */}
-            <div className="Box p-3" style={{flex: '1', backgroundColor: 'rgba(0,0,0,0.8)'}}>
-              <h2 className="h2 mb-3">Tasks</h2>
-              <div className="mb-3">
+          {/* Tasks Sidebar */}
+          <div style={{
+            width: '300px',
+            backgroundColor: '#1a1a1a',
+            borderLeft: '1px solid #333',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 0 20px rgba(255,255,255,0.1)'
+          }}>
+            <div style={{
+              padding: '20px',
+              borderBottom: '1px solid #333'
+            }}>
+              <h3 style={{
+                margin: '0 0 15px 0',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                textShadow: '0 0 10px rgba(255,255,255,0.5)'
+              }}>Tasks</h3>
+              <div style={{ display: 'flex', gap: '10px' }}>
                 <input
                   value={taskInput}
                   onChange={(e) => setTaskInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && addTask()}
-                  className="form-control mb-2"
-                  style={{backgroundColor: 'black', borderColor: 'rgba(255,255,255,0.2)', color: 'white'}}
                   placeholder="Add task..."
+                  style={{
+                    flex: 1,
+                    padding: '10px 15px',
+                    backgroundColor: '#0a0a0a',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '20px',
+                    color: 'white',
+                    fontSize: '12px',
+                    outline: 'none'
+                  }}
                 />
-                <button onClick={addTask} className="btn btn-outline btn-sm">
-                  Add Task
+                <button
+                  onClick={addTask}
+                  style={{
+                    padding: '10px 15px',
+                    backgroundColor: 'white',
+                    color: 'black',
+                    border: 'none',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    boxShadow: '0 0 10px rgba(255,255,255,0.3)'
+                  }}
+                >
+                  Add
                 </button>
               </div>
-              <div>
-                {tasks.map(task => (
-                  <div key={task.id} className={`Box p-2 mb-2 d-flex flex-justify-between flex-items-center ${task.done ? 'opacity-50' : ''}`} style={{backgroundColor: 'rgba(255,255,255,0.1)'}}>
-                    <span className="color-fg-default">{task.done ? '✅ ' : ''}{task.text}</span>
-                    <button 
-                      onClick={() => toggleTask(task.id)}
-                      className="btn btn-sm btn-outline"
-                    >
-                      {task.done ? 'Undo' : 'Done'}
-                    </button>
-                  </div>
-                ))}
-              </div>
+            </div>
+            <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
+              {tasks.map(task => (
+                <div key={task.id} style={{
+                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  padding: '12px 15px',
+                  borderRadius: '10px',
+                  marginBottom: '10px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  opacity: task.done ? 0.6 : 1,
+                  transition: 'all 0.3s ease'
+                }}>
+                  <span style={{
+                    fontSize: '13px',
+                    textDecoration: task.done ? 'line-through' : 'none'
+                  }}>
+                    {task.done ? '✅ ' : ''}{task.text}
+                  </span>
+                  <button
+                    onClick={() => toggleTask(task.id)}
+                    style={{
+                      padding: '5px 10px',
+                      backgroundColor: 'transparent',
+                      color: 'white',
+                      border: '1px solid rgba(255,255,255,0.3)',
+                      borderRadius: '15px',
+                      fontSize: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    {task.done ? 'Undo' : 'Done'}
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
-        ) : (
-          <div className="text-center pt-6">
-            <h2 className="h2 mb-3">Connect your wallet to start</h2>
-            <WalletMultiButton className="btn btn-primary btn-large" />
-          </div>
-        )}
-      </div>
+        </>
+      ) : (
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          textAlign: 'center'
+        }}>
+          <h1 style={{
+            fontSize: '48px',
+            fontWeight: 'bold',
+            marginBottom: '20px',
+            textShadow: '0 0 30px rgba(255,255,255,0.8)',
+            background: 'linear-gradient(45deg, #fff, #ccc)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}>🚀 CONSILIENCE NUCLEAR</h1>
+          <p style={{
+            fontSize: '18px',
+            marginBottom: '40px',
+            color: '#ccc'
+          }}>Connect your wallet to enter the workspace</p>
+          <WalletMultiButton style={{
+            backgroundColor: 'white',
+            color: 'black',
+            border: 'none',
+            borderRadius: '30px',
+            padding: '15px 30px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            boxShadow: '0 0 30px rgba(255,255,255,0.5)',
+            transition: 'all 0.3s ease'
+          }} />
+        </div>
+      )}
     </div>
   );
 };
