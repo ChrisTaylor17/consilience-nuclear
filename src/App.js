@@ -5,7 +5,7 @@ import io from 'socket.io-client';
 
 const App = () => {
   const { connected, publicKey } = useWallet();
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState({});
   const [input, setInput] = useState('');
   const [tasks, setTasks] = useState([]);
   const [taskInput, setTaskInput] = useState('');
@@ -20,8 +20,11 @@ const App = () => {
     setSocket(newSocket);
     
     newSocket.on('message', (data) => {
-      if (data.message && data.message.sender !== publicKey?.toString()) {
-        setMessages(prev => [...prev, data.message]);
+      if (data.message && data.channel) {
+        setMessages(prev => ({
+          ...prev,
+          [data.channel]: [...(prev[data.channel] || []), data.message]
+        }));
       }
     });
 
@@ -39,10 +42,13 @@ const App = () => {
       type: 'user'
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages(prev => ({
+      ...prev,
+      [activeChannel]: [...(prev[activeChannel] || []), userMessage]
+    }));
 
     if (socket) {
-      socket.emit('message', { message: userMessage, channel: 'general' });
+      socket.emit('message', { message: userMessage, channel: activeChannel });
     }
 
     if (input.toLowerCase().startsWith('/ai ')) {
@@ -66,10 +72,13 @@ const App = () => {
           type: 'ai'
         };
 
-        setMessages(prev => [...prev, aiMessage]);
+        setMessages(prev => ({
+          ...prev,
+          [activeChannel]: [...(prev[activeChannel] || []), aiMessage]
+        }));
         
         if (socket) {
-          socket.emit('message', { message: aiMessage, channel: 'general' });
+          socket.emit('message', { message: aiMessage, channel: activeChannel });
         }
       } catch (error) {
         console.error('AI error:', error);
@@ -103,9 +112,9 @@ const App = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#0a0a0a',
-      color: 'white',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      backgroundColor: '#000000',
+      color: '#ffffff',
+      fontFamily: 'Courier New, monospace',
       display: 'flex'
     }}>
       {connected ? (
@@ -113,8 +122,8 @@ const App = () => {
           {/* Sidebar */}
           <div style={{
             width: '240px',
-            backgroundColor: '#1a1a1a',
-            borderRight: '1px solid #333',
+            backgroundColor: '#000000',
+            borderRight: '2px solid #ffffff',
             display: 'flex',
             flexDirection: 'column',
             boxShadow: '0 0 20px rgba(255,255,255,0.1)'
@@ -122,24 +131,22 @@ const App = () => {
             {/* Header */}
             <div style={{
               padding: '20px',
-              borderBottom: '1px solid #333',
+              borderBottom: '2px solid #ffffff',
               textAlign: 'center'
             }}>
               <h1 style={{
                 fontSize: '18px',
                 fontWeight: 'bold',
                 margin: 0,
-                textShadow: '0 0 10px rgba(255,255,255,0.5)',
-                background: 'linear-gradient(45deg, #fff, #ccc)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent'
+                color: '#ffffff',
+                textShadow: '0 0 20px #ffffff'
               }}>🚀 CONSILIENCE</h1>
             </div>
 
             {/* Profile */}
             <div style={{
               padding: '15px',
-              borderBottom: '1px solid #333',
+              borderBottom: '2px solid #ffffff',
               cursor: 'pointer',
               transition: 'all 0.3s ease',
               ':hover': { backgroundColor: '#2a2a2a' }
@@ -148,14 +155,13 @@ const App = () => {
                 <div style={{
                   width: '32px',
                   height: '32px',
-                  borderRadius: '50%',
-                  backgroundColor: '#4CAF50',
+                  backgroundColor: '#ffffff',
+                  color: '#000000',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '14px',
-                  fontWeight: 'bold',
-                  boxShadow: '0 0 15px rgba(76, 175, 80, 0.5)'
+                  fontWeight: 'bold'
                 }}>
                   {publicKey?.toString().slice(0, 2).toUpperCase()}
                 </div>
@@ -163,7 +169,7 @@ const App = () => {
                   <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
                     {publicKey?.toString().slice(0, 8)}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#4CAF50' }}>● online</div>
+                  <div style={{ fontSize: '12px', color: '#ffffff', textShadow: '0 0 10px #ffffff' }}>● ONLINE</div>
                 </div>
               </div>
             </div>
@@ -172,11 +178,12 @@ const App = () => {
             <div style={{ flex: 1, padding: '20px 0' }}>
               <div style={{
                 fontSize: '12px',
-                color: '#888',
+                color: '#ffffff',
                 fontWeight: 'bold',
                 padding: '0 20px 10px',
                 textTransform: 'uppercase',
-                letterSpacing: '1px'
+                letterSpacing: '2px',
+                textShadow: '0 0 10px #ffffff'
               }}>Channels</div>
               {channels.map(channel => (
                 <div
@@ -185,12 +192,13 @@ const App = () => {
                   style={{
                     padding: '8px 20px',
                     cursor: 'pointer',
-                    backgroundColor: activeChannel === channel ? 'rgba(255,255,255,0.1)' : 'transparent',
-                    borderRight: activeChannel === channel ? '3px solid white' : 'none',
-                    transition: 'all 0.3s ease',
+                    backgroundColor: activeChannel === channel ? '#ffffff' : 'transparent',
+                    color: activeChannel === channel ? '#000000' : '#ffffff',
+                    border: activeChannel === channel ? '2px solid #ffffff' : '1px solid #ffffff',
+                    margin: '2px 10px',
                     fontSize: '14px',
-                    fontWeight: activeChannel === channel ? 'bold' : 'normal',
-                    textShadow: activeChannel === channel ? '0 0 10px rgba(255,255,255,0.8)' : 'none'
+                    fontWeight: 'bold',
+                    textShadow: activeChannel === channel ? 'none' : '0 0 10px #ffffff'
                   }}
                 >
                   # {channel}
@@ -199,17 +207,15 @@ const App = () => {
             </div>
 
             {/* Wallet */}
-            <div style={{ padding: '20px', borderTop: '1px solid #333' }}>
+            <div style={{ padding: '20px', borderTop: '2px solid #ffffff' }}>
               <WalletMultiButton style={{
                 width: '100%',
-                backgroundColor: 'transparent',
-                border: '2px solid white',
-                borderRadius: '25px',
+                backgroundColor: '#000000',
+                border: '2px solid #ffffff',
                 padding: '10px',
-                color: 'white',
+                color: '#ffffff',
                 fontWeight: 'bold',
-                boxShadow: '0 0 20px rgba(255,255,255,0.3)',
-                transition: 'all 0.3s ease'
+                textShadow: '0 0 10px #ffffff'
               }} />
             </div>
           </div>
@@ -219,18 +225,18 @@ const App = () => {
             {/* Top Bar */}
             <div style={{
               height: '60px',
-              backgroundColor: '#1a1a1a',
-              borderBottom: '1px solid #333',
+              backgroundColor: '#000000',
+              borderBottom: '2px solid #ffffff',
               display: 'flex',
               alignItems: 'center',
-              padding: '0 30px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
+              padding: '0 30px'
             }}>
               <h2 style={{
                 margin: 0,
                 fontSize: '20px',
                 fontWeight: 'bold',
-                textShadow: '0 0 10px rgba(255,255,255,0.5)'
+                color: '#ffffff',
+                textShadow: '0 0 20px #ffffff'
               }}>#{activeChannel}</h2>
             </div>
 
@@ -243,28 +249,26 @@ const App = () => {
               flexDirection: 'column',
               gap: '15px'
             }}>
-              {messages.map(msg => (
+              {(messages[activeChannel] || []).map(msg => (
                 <div key={msg.id} style={{
-                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  backgroundColor: '#000000',
                   padding: '15px 20px',
-                  borderRadius: '15px',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-                  transition: 'all 0.3s ease'
+                  border: '2px solid #ffffff',
+                  margin: '5px 0'
                 }}>
                   <div style={{
                     fontSize: '12px',
-                    color: '#4CAF50',
+                    color: '#ffffff',
                     fontWeight: 'bold',
                     marginBottom: '5px',
-                    textShadow: '0 0 5px rgba(76, 175, 80, 0.5)'
+                    textShadow: '0 0 10px #ffffff'
                   }}>
                     {msg.sender === 'AI_AGENT' ? '🤖 AI Assistant' : msg.sender?.slice(0, 8)}
                   </div>
                   <div style={{
                     fontSize: '14px',
                     lineHeight: '1.5',
-                    color: 'white'
+                    color: '#ffffff'
                   }}>{msg.content}</div>
                 </div>
               ))}
@@ -273,8 +277,8 @@ const App = () => {
             {/* Input Area */}
             <div style={{
               padding: '20px 30px',
-              backgroundColor: '#1a1a1a',
-              borderTop: '1px solid #333'
+              backgroundColor: '#000000',
+              borderTop: '2px solid #ffffff'
             }}>
               <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                 <input
@@ -285,28 +289,22 @@ const App = () => {
                   style={{
                     flex: 1,
                     padding: '15px 20px',
-                    backgroundColor: '#0a0a0a',
-                    border: '2px solid rgba(255,255,255,0.2)',
-                    borderRadius: '25px',
-                    color: 'white',
+                    backgroundColor: '#000000',
+                    border: '2px solid #ffffff',
+                    color: '#ffffff',
                     fontSize: '14px',
-                    outline: 'none',
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 0 20px rgba(255,255,255,0.1)'
+                    outline: 'none'
                   }}
                 />
                 <button
                   onClick={sendMessage}
                   style={{
                     padding: '15px 25px',
-                    backgroundColor: 'white',
-                    color: 'black',
-                    border: 'none',
-                    borderRadius: '25px',
+                    backgroundColor: '#ffffff',
+                    color: '#000000',
+                    border: '2px solid #ffffff',
                     fontWeight: 'bold',
                     cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 0 20px rgba(255,255,255,0.3)',
                     fontSize: '14px'
                   }}
                 >
@@ -319,21 +317,21 @@ const App = () => {
           {/* Tasks Sidebar */}
           <div style={{
             width: '300px',
-            backgroundColor: '#1a1a1a',
-            borderLeft: '1px solid #333',
+            backgroundColor: '#000000',
+            borderLeft: '2px solid #ffffff',
             display: 'flex',
-            flexDirection: 'column',
-            boxShadow: '0 0 20px rgba(255,255,255,0.1)'
+            flexDirection: 'column'
           }}>
             <div style={{
               padding: '20px',
-              borderBottom: '1px solid #333'
+              borderBottom: '2px solid #ffffff'
             }}>
               <h3 style={{
                 margin: '0 0 15px 0',
                 fontSize: '16px',
                 fontWeight: 'bold',
-                textShadow: '0 0 10px rgba(255,255,255,0.5)'
+                color: '#ffffff',
+                textShadow: '0 0 20px #ffffff'
               }}>Tasks</h3>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <input
@@ -344,10 +342,9 @@ const App = () => {
                   style={{
                     flex: 1,
                     padding: '10px 15px',
-                    backgroundColor: '#0a0a0a',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: '20px',
-                    color: 'white',
+                    backgroundColor: '#000000',
+                    border: '2px solid #ffffff',
+                    color: '#ffffff',
                     fontSize: '12px',
                     outline: 'none'
                   }}
@@ -356,14 +353,12 @@ const App = () => {
                   onClick={addTask}
                   style={{
                     padding: '10px 15px',
-                    backgroundColor: 'white',
-                    color: 'black',
-                    border: 'none',
-                    borderRadius: '20px',
+                    backgroundColor: '#ffffff',
+                    color: '#000000',
+                    border: '2px solid #ffffff',
                     fontSize: '12px',
                     fontWeight: 'bold',
-                    cursor: 'pointer',
-                    boxShadow: '0 0 10px rgba(255,255,255,0.3)'
+                    cursor: 'pointer'
                   }}
                 >
                   Add
@@ -373,16 +368,14 @@ const App = () => {
             <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
               {tasks.map(task => (
                 <div key={task.id} style={{
-                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  backgroundColor: '#000000',
                   padding: '12px 15px',
-                  borderRadius: '10px',
                   marginBottom: '10px',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '2px solid #ffffff',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  opacity: task.done ? 0.6 : 1,
-                  transition: 'all 0.3s ease'
+                  opacity: task.done ? 0.6 : 1
                 }}>
                   <span style={{
                     fontSize: '13px',
@@ -394,13 +387,11 @@ const App = () => {
                     onClick={() => toggleTask(task.id)}
                     style={{
                       padding: '5px 10px',
-                      backgroundColor: 'transparent',
-                      color: 'white',
-                      border: '1px solid rgba(255,255,255,0.3)',
-                      borderRadius: '15px',
+                      backgroundColor: '#000000',
+                      color: '#ffffff',
+                      border: '2px solid #ffffff',
                       fontSize: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease'
+                      cursor: 'pointer'
                     }}
                   >
                     {task.done ? 'Undo' : 'Done'}
@@ -423,27 +414,22 @@ const App = () => {
             fontSize: '48px',
             fontWeight: 'bold',
             marginBottom: '20px',
-            textShadow: '0 0 30px rgba(255,255,255,0.8)',
-            background: 'linear-gradient(45deg, #fff, #ccc)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
+            color: '#ffffff',
+            textShadow: '0 0 30px #ffffff'
           }}>🚀 CONSILIENCE NUCLEAR</h1>
           <p style={{
             fontSize: '18px',
             marginBottom: '40px',
-            color: '#ccc'
+            color: '#ffffff'
           }}>Connect your wallet to enter the workspace</p>
           <WalletMultiButton style={{
-            backgroundColor: 'white',
-            color: 'black',
-            border: 'none',
-            borderRadius: '30px',
+            backgroundColor: '#ffffff',
+            color: '#000000',
+            border: '2px solid #ffffff',
             padding: '15px 30px',
             fontSize: '16px',
             fontWeight: 'bold',
-            cursor: 'pointer',
-            boxShadow: '0 0 30px rgba(255,255,255,0.5)',
-            transition: 'all 0.3s ease'
+            cursor: 'pointer'
           }} />
         </div>
       )}
