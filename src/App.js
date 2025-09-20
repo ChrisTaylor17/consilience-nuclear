@@ -65,50 +65,40 @@ const App = () => {
     }
 
     try {
-      // Simple token creation using a backend service
-      const response = await fetch('https://api.devnet.solana.com', {
+      const response = await fetch('http://localhost:3001/api/create-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'getBalance',
-          params: [publicKey.toString()]
-        })
+        body: JSON.stringify({ walletAddress: publicKey.toString() })
       });
       
       const result = await response.json();
-      const balanceSOL = result.result.value / LAMPORTS_PER_SOL;
       
-      if (balanceSOL < 0.01) {
-        throw new Error('Insufficient SOL balance. Need at least 0.01 SOL for token creation.');
-      }
-
-      // Generate a mock token mint address for demo
-      const mockMint = `CSL${Date.now().toString().slice(-8)}`;
-      
-      const tokenMessage = {
-        id: Date.now(),
-        sender: 'SYSTEM',
-        content: `✅ CONSILIENCE TOKEN CREATED!\nMint: ${mockMint}\nAmount: 1,000,000 tokens\nBalance: ${balanceSOL.toFixed(4)} SOL\nStatus: Ready for trading`,
-        timestamp: new Date(),
-        type: 'system'
-      };
-      
-      setMessages(prev => {
-        const updated = {
-          ...prev,
-          [activeChannel]: [...(prev[activeChannel] || []), tokenMessage]
+      if (result.success) {
+        const tokenMessage = {
+          id: Date.now(),
+          sender: 'SYSTEM',
+          content: `✅ REAL SPL TOKEN CREATED!\nMint: ${result.mint}\nSymbol: ${result.symbol}\nAmount: ${result.amount} tokens\nToken Account: ${result.tokenAccount}\nTransaction: ${result.transaction}`,
+          timestamp: new Date(),
+          type: 'system'
         };
-        localStorage.setItem('consilience-messages', JSON.stringify(updated));
-        return updated;
-      });
+        
+        setMessages(prev => {
+          const updated = {
+            ...prev,
+            [activeChannel]: [...(prev[activeChannel] || []), tokenMessage]
+          };
+          localStorage.setItem('consilience-messages', JSON.stringify(updated));
+          return updated;
+        });
+      } else {
+        throw new Error(result.error);
+      }
     } catch (error) {
       console.error('Token creation error:', error);
       const errorMessage = {
         id: Date.now(),
         sender: 'SYSTEM',
-        content: `❌ Token creation failed: ${error.message}`,
+        content: `❌ Token creation failed: ${error.message}. Start backend with 'cd backend && npm start'`,
         timestamp: new Date(),
         type: 'system'
       };
