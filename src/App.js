@@ -63,40 +63,7 @@ const App = () => {
     }
   };
 
-  const createProjectToken = async (walletAddress, projectDescription) => {
-    try {
-      const response = await fetch('https://consilience-saas-production.up.railway.app/api/blockchain/create-project-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress, projectDescription })
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setProjectTokens(prev => [...prev, result]);
-        
-        const projectMessage = {
-          id: Date.now() + 3,
-          sender: 'AI_AGENT',
-          content: `🚀 PROJECT TOKEN CREATED!\n\nProject: ${result.projectName}\nToken: ${result.symbol}\nYour Allocation: ${result.allocation} tokens\nTotal Supply: ${result.totalSupply}\n\nAI Treasury holds remaining tokens for fair distribution.`,
-          timestamp: new Date(),
-          type: 'ai'
-        };
-        
-        setMessages(prev => {
-          const updated = {
-            ...prev,
-            [activeChannel]: [...(prev[activeChannel] || []), projectMessage]
-          };
-          localStorage.setItem('consilience-messages', JSON.stringify(updated));
-          return updated;
-        });
-      }
-    } catch (error) {
-      console.error('Project token creation error:', error);
-    }
-  };
+
 
   const createNFT = async (walletAddress, description) => {
     try {
@@ -224,7 +191,7 @@ const App = () => {
       fetchAIMatches();
       fetchChatAnalytics();
     }
-  }, [connected, publicKey, getWalletBalance]);
+  }, [connected, publicKey, getWalletBalance, fetchAIMatches, fetchChatAnalytics]);
   
   const fetchAIMatches = async () => {
     try {
