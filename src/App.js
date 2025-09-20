@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { Connection, LAMPORTS_PER_SOL, Keypair } from '@solana/web3.js';
-import { createMint, getOrCreateAssociatedTokenAccount, mintTo } from '@solana/spl-token';
+import { Connection, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import io from 'socket.io-client';
 import OpenAI from 'openai';
 
 const App = () => {
-  const { connected, publicKey, signTransaction } = useWallet();
+  const { connected, publicKey } = useWallet();
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('consilience-messages');
     return saved ? JSON.parse(saved) : {};
