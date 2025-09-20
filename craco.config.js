@@ -18,6 +18,7 @@ module.exports = {
         https: false,
         assert: false,
         url: false,
+        vm: require.resolve('vm-browserify'),
       };
       
       webpackConfig.plugins.push(

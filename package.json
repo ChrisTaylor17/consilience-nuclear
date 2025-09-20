@@ -16,7 +16,8 @@
     "react-scripts": "5.0.1",
     "socket.io-client": "^4.8.1",
     "stream-browserify": "^3.0.0",
-    "tailwindcss": "^4.1.13"
+    "tailwindcss": "^4.1.13",
+    "vm-browserify": "^1.1.2"
   },
   "scripts": {
     "start": "craco start",
