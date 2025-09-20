@@ -75,16 +75,37 @@ const App = () => {
       if (result.success) {
         const nftMessage = {
           id: Date.now() + 2,
-          sender: 'AI_AGENT',
-          content: `🎨 NFT CREATED!\nName: ${result.name}\nMint: ${result.mint}\nImage: ${result.imageUrl}`,
+          sender: 'SYSTEM',
+          content: `🎨 NFT SUCCESSFULLY CREATED!\n\nName: ${result.name}\nMint: ${result.mint}\nImage: ${result.imageUrl}\nType: ${result.type}\nTransaction: ${result.transaction}\n\nYour NFT is now in your wallet!`,
           timestamp: new Date(),
-          type: 'ai'
+          type: 'system'
         };
         
         setMessages(prev => {
           const updated = {
             ...prev,
             [activeChannel]: [...(prev[activeChannel] || []), nftMessage]
+          };
+          localStorage.setItem('consilience-messages', JSON.stringify(updated));
+          return updated;
+        });
+        
+        if (socket) {
+          socket.emit('message', { message: nftMessage, channel: activeChannel });
+        }
+      } else {
+        const errorMessage = {
+          id: Date.now() + 3,
+          sender: 'SYSTEM',
+          content: `❌ NFT creation failed: ${result.error}`,
+          timestamp: new Date(),
+          type: 'system'
+        };
+        
+        setMessages(prev => {
+          const updated = {
+            ...prev,
+            [activeChannel]: [...(prev[activeChannel] || []), errorMessage]
           };
           localStorage.setItem('consilience-messages', JSON.stringify(updated));
           return updated;
@@ -298,9 +319,9 @@ const App = () => {
         
         // Check if user wants NFT creation
         const userInput = input.replace('/ai ', '').toLowerCase();
-        if (userInput.includes('nft') || userInput.includes('create') && userInput.includes('image')) {
+        if (userInput.includes('nft') || (userInput.includes('create') && userInput.includes('image'))) {
           await createNFT(publicKey.toString(), userInput);
-          aiResponse += '\n\n🎨 Creating your NFT now...';
+          aiResponse = '🎨 Creating your NFT now! Check below for confirmation.';
         }
         
         // Award CS tokens for AI interaction
