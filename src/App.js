@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { Connection, LAMPORTS_PER_SOL } from '@solana/web3.js';
@@ -39,16 +39,16 @@ const App = () => {
     if (connected && publicKey) {
       getWalletBalance();
     }
-  }, [connected, publicKey, connection]);
+  }, [connected, publicKey, getWalletBalance]);
 
-  const getWalletBalance = async () => {
+  const getWalletBalance = useCallback(async () => {
     try {
       const balance = await connection.getBalance(publicKey);
       setBalance(balance / LAMPORTS_PER_SOL);
     } catch (error) {
       console.error('Balance error:', error);
     }
-  };
+  }, [connection, publicKey]);
 
   const createToken = async () => {
     try {
