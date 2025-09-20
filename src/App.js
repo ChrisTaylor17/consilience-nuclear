@@ -27,6 +27,9 @@ const App = () => {
   const [aiMatches, setAiMatches] = useState([]);
   const [userAnalysis, setUserAnalysis] = useState(null);
   const [chatAnalytics, setChatAnalytics] = useState(null);
+  const [projectRooms, setProjectRooms] = useState([]);
+  const [activeRoom, setActiveRoom] = useState(null);
+  const [roomMessages, setRoomMessages] = useState({});
 
 
   
@@ -173,6 +176,26 @@ const App = () => {
           return updated;
         });
       }
+    });
+
+    newSocket.on('project_message', (data) => {
+      if (data.roomId && data.message) {
+        setRoomMessages(prev => ({
+          ...prev,
+          [data.roomId]: [...(prev[data.roomId] || []), data.message]
+        }));
+      }
+    });
+
+    newSocket.on('project_room_created', (data) => {
+      setProjectRooms(prev => [...prev, data.room]);
+      setActiveRoom(data.room);
+      setRoomMessages(prev => ({ ...prev, [data.roomId]: [] }));
+    });
+
+    newSocket.on('project_room_context', (data) => {
+      setActiveRoom(data.room);
+      setRoomMessages(prev => ({ ...prev, [data.room.id]: data.room.messages }));
     });
 
     return () => newSocket.close();
@@ -353,37 +376,24 @@ const App = () => {
       
       // Direct matching for connection requests
       if (hasConnectIntent) {
-        // Create mock matches for demo (in production, this would come from backend)
-        const mockMatches = [
-          {
-            walletAddress: 'ABC123DEF456',
-            score: 0.92,
-            recommendedRole: 'Technical Co-founder',
-            commonSkills: ['Solana', 'Rust', 'Blockchain'],
-            profile: { activityLevel: 'high' },
-            collaborationPotential: { score: 0.85 }
-          },
-          {
-            walletAddress: 'GHI789JKL012',
-            score: 0.87,
-            recommendedRole: 'Business Co-founder',
-            commonSkills: ['DeFi', 'Strategy'],
-            profile: { activityLevel: 'medium' },
-            collaborationPotential: { score: 0.78 }
-          }
-        ];
+        const projectName = prompt('Project name:') || `Collaboration ${Date.now().toString().slice(-4)}`;
         
-        const topMatch = mockMatches[0];
-        const aiResponse = `🎯 **PERFECT COFOUNDER FOUND!**\n\n**${topMatch.walletAddress.slice(0,8)}...** is your ideal match!\n\n✨ **Why perfect:**\n• ${Math.round(topMatch.score*100)}% compatibility\n• Role: ${topMatch.recommendedRole}\n• Skills: ${topMatch.commonSkills.join(', ')}\n• Success rate: ${Math.round(topMatch.collaborationPotential.score*100)}%\n\n🚀 **CONNECTING YOU NOW!** Introduction coming in 3 seconds...`;
+        if (socket) {
+          socket.emit('create_project_room', {
+            walletAddress: publicKey.toString(),
+            projectName,
+            description: userInput
+          });
+        }
         
         const tokenReward = Math.floor(Math.random() * 90) + 10;
-        await awardTokens(publicKey.toString(), tokenReward, 'AI matching');
+        await awardTokens(publicKey.toString(), tokenReward, 'Project creation');
         setCsTokenBalance(prev => prev + tokenReward);
         
         const aiMessage = {
           id: Date.now() + 1,
-          sender: 'AI_CONNECTOR',
-          content: `${aiResponse}\n\n🪙 +${tokenReward} CS tokens awarded!`,
+          sender: 'PROJECT_CREATOR',
+          content: `🚀 **PROJECT ROOM CREATED!**\n\n**${projectName}**\n\n✨ **Features:**\n• Dedicated AI assistant\n• Real-time collaboration\n• Smart task management\n• Multi-user chat\n\n🎯 **Share the room ID with collaborators to join!**\n\n🪙 +${tokenReward} CS tokens awarded!`,
           timestamp: new Date(),
           type: 'ai'
         };
@@ -396,34 +406,6 @@ const App = () => {
           localStorage.setItem('consilience-messages', JSON.stringify(updated));
           return updated;
         });
-        
-        if (socket) {
-          socket.emit('message', { message: aiMessage, channel: activeChannel });
-        }
-        
-        // Auto-generate introduction after 3 seconds
-        setTimeout(() => {
-          const introMessage = {
-            id: Date.now() + 3000,
-            sender: 'AI_CONNECTOR',
-            content: `📧 **SMART INTRODUCTION COMPLETE!**\n\n🤝 **Meet your perfect cofounder:**\n\n**${topMatch.walletAddress.slice(0,8)}...** - ${topMatch.recommendedRole}\n\n**Why you're perfect together:**\n• Complementary skills: ${topMatch.commonSkills.join(', ')}\n• Both active in blockchain development\n• ${Math.round(topMatch.collaborationPotential.score*100)}% collaboration success rate\n\n**Suggested next steps:**\n1. Share your project vision\n2. Discuss roles and equity\n3. Set up regular check-ins\n4. Start building together!\n\n🎉 **You're now connected!** Earn bonus CS tokens for successful partnerships!`,
-            timestamp: new Date(),
-            type: 'ai'
-          };
-          
-          setMessages(prev => {
-            const updated = {
-              ...prev,
-              [activeChannel]: [...(prev[activeChannel] || []), introMessage]
-            };
-            localStorage.setItem('consilience-messages', JSON.stringify(updated));
-            return updated;
-          });
-          
-          if (socket) {
-            socket.emit('message', { message: introMessage, channel: activeChannel });
-          }
-        }, 3000);
         
         setInput('');
         return;
