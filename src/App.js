@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import io from 'socket.io-client';
 import OpenAI from 'openai';
 
@@ -12,6 +13,8 @@ const App = () => {
   const [taskInput, setTaskInput] = useState('');
   const [socket, setSocket] = useState(null);
   const [activeChannel, setActiveChannel] = useState('general');
+  const [balance, setBalance] = useState(0);
+  const [connection] = useState(new Connection('https://api.devnet.solana.com'));
 
   
   const channels = ['general', 'ai-chat', 'tasks', 'dev', 'random'];
@@ -31,6 +34,47 @@ const App = () => {
 
     return () => newSocket.close();
   }, [publicKey]);
+
+  useEffect(() => {
+    if (connected && publicKey) {
+      getWalletBalance();
+    }
+  }, [connected, publicKey]);
+
+  const getWalletBalance = async () => {
+    try {
+      const balance = await connection.getBalance(publicKey);
+      setBalance(balance / LAMPORTS_PER_SOL);
+    } catch (error) {
+      console.error('Balance error:', error);
+    }
+  };
+
+  const createToken = async () => {
+    try {
+      const response = await fetch('https://consilience-saas-production.up.railway.app/api/blockchain/create-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: publicKey?.toString() })
+      });
+      const result = await response.json();
+      
+      const tokenMessage = {
+        id: Date.now(),
+        sender: 'SYSTEM',
+        content: `Token created! Mint: ${result.mint || 'Processing...'}`,
+        timestamp: new Date(),
+        type: 'system'
+      };
+      
+      setMessages(prev => ({
+        ...prev,
+        [activeChannel]: [...(prev[activeChannel] || []), tokenMessage]
+      }));
+    } catch (error) {
+      console.error('Token creation error:', error);
+    }
+  };
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -64,14 +108,14 @@ const App = () => {
           messages: [
             {
               role: 'system',
-              content: 'You are CONSILIENCE AI - a direct productivity assistant that COMPLETES tasks immediately. When asked to write something, you write it fully. Never ask questions. Always deliver complete outputs. You specialize in business writing, whitepapers, technical documentation, market analysis, and strategic planning. You help connect people for crypto projects and allocate tokens based on productivity.'
+              content: 'You are CONSILIENCE AI. Be concise and direct. Complete tasks immediately. Focus on: team matching, token allocation, project creation, and productivity. Keep responses under 200 words unless generating documents.'
             },
             {
               role: 'user',
               content: input.replace('/ai ', '')
             }
           ],
-          max_tokens: 2000
+          max_tokens: 500
         });
 
         const aiResponse = completion.choices[0]?.message?.content || 'No response generated.';
@@ -192,7 +236,7 @@ const App = () => {
                   <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
                     {publicKey?.toString().slice(0, 8)}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#ffffff', textShadow: '0 0 10px #ffffff' }}>● ONLINE</div>
+                  <div style={{ fontSize: '12px', color: '#ffffff', textShadow: '0 0 10px #ffffff' }}>● {balance.toFixed(2)} SOL</div>
                 </div>
               </div>
             </div>
@@ -229,8 +273,24 @@ const App = () => {
               ))}
             </div>
 
-            {/* Wallet */}
+            {/* Actions */}
             <div style={{ padding: '20px', borderTop: '2px solid #ffffff' }}>
+              <button
+                onClick={createToken}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#000000',
+                  border: '2px solid #ffffff',
+                  padding: '10px',
+                  color: '#ffffff',
+                  fontWeight: 'bold',
+                  textShadow: '0 0 10px #ffffff',
+                  marginBottom: '10px',
+                  cursor: 'pointer'
+                }}
+              >
+                CREATE TOKEN
+              </button>
               <WalletMultiButton style={{
                 width: '100%',
                 backgroundColor: '#000000',
