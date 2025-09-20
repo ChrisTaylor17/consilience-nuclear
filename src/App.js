@@ -57,10 +57,8 @@ const App = () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            message: input.replace('/ai ', ''),
-            walletAddress: publicKey?.toString(),
-            context: 'productivity_assistant',
-            prompt: 'You are CONSILIENCE AI - a direct productivity assistant that COMPLETES tasks, not just suggests them. When asked to write something, you write it immediately. When asked to create something, you create it fully. When asked to research, you provide comprehensive results. Never ask for more information unless absolutely critical. Always deliver complete, actionable outputs. Focus on getting things done efficiently. You specialize in business writing, whitepapers, technical documentation, market analysis, and strategic planning. Always provide full, detailed responses that users can immediately use.'
+            message: `SYSTEM: You are CONSILIENCE AI - a direct productivity assistant that COMPLETES tasks immediately. When asked to write something, you write it fully. Never ask questions. Always deliver complete outputs. USER REQUEST: ${input.replace('/ai ', '')}`,
+            walletAddress: publicKey?.toString()
           })
         });
         
