@@ -93,10 +93,7 @@ const App = () => {
     setTaskInput('');
   };
 
-  const updateProfile = (name, status) => {
-    setProfile({ name, status });
-    setShowProfile(false);
-  };
+
 
   const toggleTask = (id) => {
     setTasks(prev => prev.map(task => 
