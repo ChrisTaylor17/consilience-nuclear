@@ -18,14 +18,40 @@ const App = () => {
   const [activeChannel, setActiveChannel] = useState('general');
   const [balance, setBalance] = useState(0);
   const [connection] = useState(new Connection('https://api.devnet.solana.com'));
+  const [tokenName, setTokenName] = useState('');
+  const [tokens, setTokens] = useState([]);
+  const [transactions, setTransactions] = useState([]);
 
   
   const channels = ['general', 'ai-chat', 'tasks', 'dev', 'random'];
+
+  const generateTokenName = async () => {
+    try {
+      const openai = new OpenAI({
+        apiKey: process.env.REACT_APP_OPENAI_API_KEY,
+        dangerouslyAllowBrowser: true
+      });
+      
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: [{ role: 'user', content: 'Generate a creative, unique cryptocurrency token name (2-3 words max). Just return the name, nothing else.' }],
+        max_tokens: 20
+      });
+      
+      return completion.choices[0]?.message?.content?.trim() || 'CONSILIENCE';
+    } catch (error) {
+      return 'CONSILIENCE';
+    }
+  };
 
   const getWalletBalance = useCallback(async () => {
     try {
       const balance = await connection.getBalance(publicKey);
       setBalance(balance / LAMPORTS_PER_SOL);
+      
+      // Get recent transactions
+      const signatures = await connection.getSignaturesForAddress(publicKey, { limit: 5 });
+      setTransactions(signatures);
     } catch (error) {
       console.error('Balance error:', error);
     }
@@ -63,20 +89,37 @@ const App = () => {
       return;
     }
 
+    const name = tokenName || await generateTokenName();
+
     try {
       const response = await fetch('https://consilience-saas-production.up.railway.app/api/blockchain/create-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: publicKey.toString() })
+        body: JSON.stringify({ 
+          walletAddress: publicKey.toString(),
+          tokenName: name,
+          tokenSymbol: name.substring(0, 4).toUpperCase()
+        })
       });
       
       const result = await response.json();
       
       if (result.success) {
+        const newToken = {
+          name: result.name || name,
+          symbol: result.symbol,
+          mint: result.mint,
+          amount: result.amount,
+          tokenAccount: result.tokenAccount
+        };
+        
+        setTokens(prev => [...prev, newToken]);
+        setTokenName('');
+        
         const tokenMessage = {
           id: Date.now(),
           sender: 'SYSTEM',
-          content: `✅ REAL SPL TOKEN CREATED!\nMint: ${result.mint}\nSymbol: ${result.symbol}\nAmount: ${result.amount} tokens\nToken Account: ${result.tokenAccount}\nTransaction: ${result.transaction}`,
+          content: `✅ ${result.name || name} TOKEN CREATED!\nMint: ${result.mint}\nSymbol: ${result.symbol}\nAmount: ${result.amount} tokens\nTransaction: ${result.transaction}`,
           timestamp: new Date(),
           type: 'system'
         };
@@ -322,8 +365,23 @@ const App = () => {
               ))}
             </div>
 
-            {/* Actions */}
+            {/* Token Creation */}
             <div style={{ padding: '20px', borderTop: '2px solid #ffffff' }}>
+              <input
+                value={tokenName}
+                onChange={(e) => setTokenName(e.target.value)}
+                placeholder="Token name (AI generates if empty)"
+                style={{
+                  width: '100%',
+                  backgroundColor: '#000000',
+                  border: '2px solid #ffffff',
+                  padding: '8px',
+                  color: '#ffffff',
+                  fontSize: '12px',
+                  marginBottom: '10px',
+                  outline: 'none'
+                }}
+              />
               <button
                 onClick={createToken}
                 style={{
@@ -446,7 +504,7 @@ const App = () => {
             </div>
           </div>
 
-          {/* Tasks Sidebar */}
+          {/* Blockchain Sidebar */}
           <div style={{
             width: '300px',
             backgroundColor: '#000000',
@@ -454,6 +512,55 @@ const App = () => {
             display: 'flex',
             flexDirection: 'column'
           }}>
+            <div style={{
+              padding: '20px',
+              borderBottom: '2px solid #ffffff'
+            }}>
+              <h3 style={{
+                margin: '0 0 15px 0',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#ffffff',
+                textShadow: '0 0 20px #ffffff'
+              }}>My Tokens</h3>
+              {tokens.map((token, i) => (
+                <div key={i} style={{
+                  backgroundColor: '#000000',
+                  padding: '10px',
+                  marginBottom: '8px',
+                  border: '2px solid #ffffff',
+                  fontSize: '12px'
+                }}>
+                  <div style={{ fontWeight: 'bold' }}>{token.name}</div>
+                  <div>{token.symbol} - {token.amount}</div>
+                  <div style={{ fontSize: '10px', opacity: 0.7 }}>{token.mint.slice(0, 8)}...</div>
+                </div>
+              ))}
+            </div>
+            <div style={{
+              padding: '20px',
+              borderBottom: '2px solid #ffffff'
+            }}>
+              <h3 style={{
+                margin: '0 0 15px 0',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#ffffff',
+                textShadow: '0 0 20px #ffffff'
+              }}>Recent Transactions</h3>
+              {transactions.slice(0, 3).map((tx, i) => (
+                <div key={i} style={{
+                  backgroundColor: '#000000',
+                  padding: '8px',
+                  marginBottom: '5px',
+                  border: '2px solid #ffffff',
+                  fontSize: '10px'
+                }}>
+                  <div>{tx.signature.slice(0, 8)}...</div>
+                  <div style={{ opacity: 0.7 }}>{new Date(tx.blockTime * 1000).toLocaleTimeString()}</div>
+                </div>
+              ))}
+            </div>
             <div style={{
               padding: '20px',
               borderBottom: '2px solid #ffffff'
