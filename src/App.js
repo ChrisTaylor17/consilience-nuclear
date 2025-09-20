@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { Connection, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, LAMPORTS_PER_SOL, Keypair, Transaction } from '@solana/web3.js';
+import { createMint, getOrCreateAssociatedTokenAccount, mintTo } from '@solana/spl-token';
 import io from 'socket.io-client';
 import OpenAI from 'openai';
 
 const App = () => {
-  const { connected, publicKey } = useWallet();
+  const { connected, publicKey, signTransaction } = useWallet();
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('consilience-messages');
     return saved ? JSON.parse(saved) : {};
@@ -58,22 +59,77 @@ const App = () => {
   }, [connected, publicKey, getWalletBalance]);
 
   const createToken = async () => {
-    const tokenMessage = {
-      id: Date.now(),
-      sender: 'SYSTEM',
-      content: `Creating CONSILIENCE token for ${publicKey?.toString().slice(0, 8)}... Token mint: CSL${Date.now().toString().slice(-6)} - 1,000,000 tokens allocated!`,
-      timestamp: new Date(),
-      type: 'system'
-    };
-    
-    setMessages(prev => {
-      const updated = {
-        ...prev,
-        [activeChannel]: [...(prev[activeChannel] || []), tokenMessage]
+    if (!connected || !publicKey || !signTransaction) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    try {
+      // Create a new mint authority (you as the creator)
+      const mintAuthority = Keypair.generate();
+      
+      // Create the mint
+      const mint = await createMint(
+        connection,
+        mintAuthority, // Payer
+        publicKey, // Mint authority
+        publicKey, // Freeze authority
+        9 // Decimals
+      );
+
+      // Get or create associated token account
+      const tokenAccount = await getOrCreateAssociatedTokenAccount(
+        connection,
+        mintAuthority, // Payer
+        mint,
+        publicKey // Owner
+      );
+
+      // Mint 1,000,000 tokens to the user
+      await mintTo(
+        connection,
+        mintAuthority, // Payer
+        mint,
+        tokenAccount.address,
+        publicKey, // Mint authority
+        1000000 * Math.pow(10, 9) // 1M tokens with 9 decimals
+      );
+
+      const tokenMessage = {
+        id: Date.now(),
+        sender: 'SYSTEM',
+        content: `✅ REAL TOKEN CREATED!\nMint: ${mint.toString()}\nAmount: 1,000,000 CONSILIENCE tokens\nToken Account: ${tokenAccount.address.toString()}`,
+        timestamp: new Date(),
+        type: 'system'
       };
-      localStorage.setItem('consilience-messages', JSON.stringify(updated));
-      return updated;
-    });
+      
+      setMessages(prev => {
+        const updated = {
+          ...prev,
+          [activeChannel]: [...(prev[activeChannel] || []), tokenMessage]
+        };
+        localStorage.setItem('consilience-messages', JSON.stringify(updated));
+        return updated;
+      });
+    } catch (error) {
+      console.error('Real token creation error:', error);
+      const errorMessage = {
+        id: Date.now(),
+        sender: 'SYSTEM',
+        content: `❌ Token creation failed: ${error.message}. Make sure you have SOL for transaction fees.`,
+        timestamp: new Date(),
+        type: 'system'
+      };
+      
+      setMessages(prev => {
+        const updated = {
+          ...prev,
+          [activeChannel]: [...(prev[activeChannel] || []), errorMessage]
+        };
+        localStorage.setItem('consilience-messages', JSON.stringify(updated));
+        return updated;
+      });
+    }
   };
 
   const sendMessage = async () => {
