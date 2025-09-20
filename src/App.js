@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import io from 'socket.io-client';
-import { QBusinessClient, ChatSyncCommand } from '@aws-sdk/client-qbusiness';
 
 const App = () => {
   const { connected, publicKey } = useWallet();
