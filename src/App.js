@@ -44,14 +44,48 @@ const App = () => {
     }
   };
 
+  const awardTokens = async (walletAddress, amount, reason) => {
+    try {
+      await fetch('https://consilience-saas-production.up.railway.app/api/blockchain/award-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress, amount, reason })
+      });
+    } catch (error) {
+      console.error('Token award error:', error);
+    }
+  };
+
   const getWalletBalance = useCallback(async () => {
     try {
       const balance = await connection.getBalance(publicKey);
       setBalance(balance / LAMPORTS_PER_SOL);
       
-      // Get recent transactions
-      const signatures = await connection.getSignaturesForAddress(publicKey, { limit: 5 });
-      setTransactions(signatures);
+      // Get detailed transaction data
+      const signatures = await connection.getSignaturesForAddress(publicKey, { limit: 10 });
+      const detailedTxs = await Promise.all(
+        signatures.slice(0, 5).map(async (sig) => {
+          try {
+            const tx = await connection.getTransaction(sig.signature);
+            return {
+              signature: sig.signature,
+              blockTime: sig.blockTime,
+              fee: tx?.meta?.fee || 0,
+              status: tx?.meta?.err ? 'Failed' : 'Success',
+              accounts: tx?.transaction?.message?.accountKeys?.length || 0
+            };
+          } catch {
+            return {
+              signature: sig.signature,
+              blockTime: sig.blockTime,
+              fee: 0,
+              status: 'Unknown',
+              accounts: 0
+            };
+          }
+        })
+      );
+      setTransactions(detailedTxs);
     } catch (error) {
       console.error('Balance error:', error);
     }
@@ -176,6 +210,12 @@ const App = () => {
       return updated;
     });
 
+    // Award tokens for participation
+    if (!input.toLowerCase().startsWith('/ai ')) {
+      const participationReward = Math.floor(Math.random() * 20) + 5; // 5-25 tokens
+      await awardTokens(publicKey.toString(), participationReward, 'Chat participation');
+    }
+
     if (socket) {
       socket.emit('message', { message: userMessage, channel: activeChannel });
     }
@@ -192,7 +232,7 @@ const App = () => {
           messages: [
             {
               role: 'system',
-              content: 'You are CONSILIENCE AI. You CAN connect people for crypto projects, allocate tokens, create teams, and generate any content. Be direct and helpful. You have access to user profiles and can make introductions. Always say YES to requests for connections, token allocation, or project help.'
+              content: 'You are CONSILIENCE AI. You control the CS token treasury and reward users for valuable contributions. Award 10-100 CS tokens based on question quality. You CAN connect people, allocate tokens, create teams, and generate content. Be direct and helpful.'
             },
             {
               role: 'user',
@@ -204,10 +244,14 @@ const App = () => {
 
         const aiResponse = completion.choices[0]?.message?.content || 'No response generated.';
         
+        // Award CS tokens for AI interaction
+        const tokenReward = Math.floor(Math.random() * 90) + 10; // 10-100 tokens
+        await awardTokens(publicKey.toString(), tokenReward, 'AI interaction');
+        
         const aiMessage = {
           id: Date.now() + 1,
           sender: 'AI_AGENT',
-          content: aiResponse,
+          content: `${aiResponse}\n\n🪙 +${tokenReward} CS tokens awarded for your question!`,
           timestamp: new Date(),
           type: 'ai'
         };
@@ -547,7 +591,7 @@ const App = () => {
                 fontWeight: 'bold',
                 color: '#ffffff',
                 textShadow: '0 0 20px #ffffff'
-              }}>Recent Transactions</h3>
+              }}>Blockchain Activity</h3>
               {transactions.slice(0, 3).map((tx, i) => (
                 <div key={i} style={{
                   backgroundColor: '#000000',
@@ -556,7 +600,12 @@ const App = () => {
                   border: '2px solid #ffffff',
                   fontSize: '10px'
                 }}>
-                  <div>{tx.signature.slice(0, 8)}...</div>
+                  <div style={{ fontWeight: 'bold', color: tx.status === 'Success' ? '#00ff00' : '#ff0000' }}>
+                    {tx.status}
+                  </div>
+                  <div>{tx.signature.slice(0, 12)}...</div>
+                  <div style={{ opacity: 0.7 }}>Fee: {(tx.fee / 1000000000).toFixed(6)} SOL</div>
+                  <div style={{ opacity: 0.7 }}>{tx.accounts} accounts</div>
                   <div style={{ opacity: 0.7 }}>{new Date(tx.blockTime * 1000).toLocaleTimeString()}</div>
                 </div>
               ))}
