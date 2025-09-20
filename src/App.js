@@ -27,6 +27,8 @@ const App = () => {
   const [aiMatches, setAiMatches] = useState([]);
   const [userAnalysis, setUserAnalysis] = useState(null);
   const [chatAnalytics, setChatAnalytics] = useState(null);
+  const [activeRoom, setActiveRoom] = useState(null);
+  const [roomMessages, setRoomMessages] = useState({});
 
 
 
@@ -174,6 +176,20 @@ const App = () => {
           return updated;
         });
       }
+    });
+
+    newSocket.on('project_message', (data) => {
+      if (data.roomId && data.message) {
+        setRoomMessages(prev => ({
+          ...prev,
+          [data.roomId]: [...(prev[data.roomId] || []), data.message]
+        }));
+      }
+    });
+
+    newSocket.on('project_room_created', (data) => {
+      setActiveRoom(data.room);
+      setRoomMessages(prev => ({ ...prev, [data.roomId]: [] }));
     });
 
 
@@ -345,7 +361,9 @@ const App = () => {
       });
     }
 
-    if (socket) {
+    if (activeRoom && socket) {
+      socket.emit('message', { roomId: activeRoom.id, message: userMessage });
+    } else if (socket) {
       socket.emit('message', { message: userMessage, channel: activeChannel });
     }
 
@@ -663,9 +681,25 @@ const App = () => {
                 margin: 0,
                 fontSize: '20px',
                 fontWeight: 'bold',
-                color: '#ffffff',
+                color: activeRoom ? '#00ff00' : '#ffffff',
                 textShadow: '0 0 20px #ffffff'
-              }}>#{activeChannel}</h2>
+              }}>{activeRoom ? `🚀 ${activeRoom.name}` : `#${activeChannel}`}</h2>
+              {activeRoom && (
+                <button
+                  onClick={() => setActiveRoom(null)}
+                  style={{
+                    marginLeft: '20px',
+                    padding: '5px 15px',
+                    backgroundColor: '#000000',
+                    border: '1px solid #ffffff',
+                    color: '#ffffff',
+                    fontSize: '12px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Leave Room
+                </button>
+              )}
             </div>
 
             {/* Chat Area */}
@@ -677,29 +711,57 @@ const App = () => {
               flexDirection: 'column',
               gap: '15px'
             }}>
-              {(messages[activeChannel] || []).map(msg => (
-                <div key={msg.id} style={{
-                  backgroundColor: '#000000',
-                  padding: '15px 20px',
-                  border: '2px solid #ffffff',
-                  margin: '5px 0'
-                }}>
-                  <div style={{
-                    fontSize: '12px',
-                    color: '#ffffff',
-                    fontWeight: 'bold',
-                    marginBottom: '5px',
-                    textShadow: '0 0 10px #ffffff'
+              {activeRoom ? (
+                // Project room messages
+                (roomMessages[activeRoom.id] || []).map(msg => (
+                  <div key={msg.id} style={{
+                    backgroundColor: '#000000',
+                    padding: '15px 20px',
+                    border: msg.sender === 'PROJECT_AI' ? '2px solid #00ff00' : '2px solid #ffffff',
+                    margin: '5px 0'
                   }}>
-                    {msg.sender === 'AI_AGENT' ? '🤖 AI Assistant' : msg.sender?.slice(0, 8)}
+                    <div style={{
+                      fontSize: '12px',
+                      color: msg.sender === 'PROJECT_AI' ? '#00ff00' : '#ffffff',
+                      fontWeight: 'bold',
+                      marginBottom: '5px',
+                      textShadow: '0 0 10px #ffffff'
+                    }}>
+                      {msg.sender === 'PROJECT_AI' ? '🤖 Project AI' : msg.sender?.slice(0, 8)}
+                    </div>
+                    <div style={{
+                      fontSize: '14px',
+                      lineHeight: '1.5',
+                      color: '#ffffff'
+                    }}>{msg.content}</div>
                   </div>
-                  <div style={{
-                    fontSize: '14px',
-                    lineHeight: '1.5',
-                    color: '#ffffff'
-                  }}>{msg.content}</div>
-                </div>
-              ))}
+                ))
+              ) : (
+                // Regular channel messages
+                (messages[activeChannel] || []).map(msg => (
+                  <div key={msg.id} style={{
+                    backgroundColor: '#000000',
+                    padding: '15px 20px',
+                    border: '2px solid #ffffff',
+                    margin: '5px 0'
+                  }}>
+                    <div style={{
+                      fontSize: '12px',
+                      color: '#ffffff',
+                      fontWeight: 'bold',
+                      marginBottom: '5px',
+                      textShadow: '0 0 10px #ffffff'
+                    }}>
+                      {msg.sender === 'AI_AGENT' ? '🤖 AI Assistant' : msg.sender?.slice(0, 8)}
+                    </div>
+                    <div style={{
+                      fontSize: '14px',
+                      lineHeight: '1.5',
+                      color: '#ffffff'
+                    }}>{msg.content}</div>
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Input Area */}
