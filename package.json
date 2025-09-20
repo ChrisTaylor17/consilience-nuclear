@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@aws-sdk/client-qbusiness": "^3.893.0",
     "@craco/craco": "^7.1.0",
     "@primer/css": "^22.0.2",
     "@solana/wallet-adapter-react": "^0.15.39",

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import io from 'socket.io-client';
+import { QBusinessClient, ChatSyncCommand } from '@aws-sdk/client-qbusiness';
 
 const App = () => {
   const { connected, publicKey } = useWallet();
@@ -53,29 +54,27 @@ const App = () => {
 
     if (input.toLowerCase().startsWith('/ai ')) {
       try {
-        const response = await fetch('https://consilience-saas-production.up.railway.app/api/ai/chat', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'X-AI-Mode': 'productivity',
-            'X-System-Prompt': 'You are CONSILIENCE AI - a direct productivity assistant that COMPLETES tasks immediately. When asked to write something, you write it fully. Never ask questions. Always deliver complete outputs.'
-          },
-          body: JSON.stringify({
-            message: input.replace('/ai ', ''),
-            walletAddress: publicKey?.toString(),
-            systemPrompt: 'You are CONSILIENCE AI - a direct productivity assistant that COMPLETES tasks immediately. When asked to write something, you write it fully. Never ask questions. Always deliver complete outputs.',
-            context: 'productivity_assistant',
-            mode: 'direct_completion',
-            behavior: 'complete_tasks_immediately'
-          })
+        const qBusinessClient = new QBusinessClient({
+          region: 'us-east-1',
+          credentials: {
+            accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID || 'your-access-key',
+            secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY || 'your-secret-key'
+          }
         });
-        
-        const result = await response.json();
+
+        const command = new ChatSyncCommand({
+          applicationId: process.env.REACT_APP_Q_BUSINESS_APP_ID || 'your-app-id',
+          userMessage: input.replace('/ai ', ''),
+          systemMessage: 'You are CONSILIENCE AI - a direct productivity assistant that COMPLETES tasks immediately. When asked to write something, you write it fully. Never ask questions. Always deliver complete outputs. Focus on business writing, whitepapers, technical documentation, and strategic planning.',
+          userId: publicKey?.toString() || 'anonymous'
+        });
+
+        const response = await qBusinessClient.send(command);
         
         const aiMessage = {
           id: Date.now() + 1,
           sender: 'AI_AGENT',
-          content: result.response,
+          content: response.systemMessage || 'No response received.',
           timestamp: new Date(),
           type: 'ai'
         };
@@ -89,11 +88,11 @@ const App = () => {
           socket.emit('message', { message: aiMessage, channel: activeChannel });
         }
       } catch (error) {
-        console.error('AI error:', error);
+        console.error('Amazon Q Business error:', error);
         const errorMessage = {
           id: Date.now() + 1,
           sender: 'AI_AGENT',
-          content: 'Sorry, I encountered an error. Please try again.',
+          content: 'Amazon Q Business is not configured. Please set up AWS credentials and Q Business application ID.',
           timestamp: new Date(),
           type: 'ai'
         };
