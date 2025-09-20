@@ -58,7 +58,9 @@ const App = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             message: input.replace('/ai ', ''),
-            walletAddress: publicKey?.toString()
+            walletAddress: publicKey?.toString(),
+            context: 'business_writing',
+            prompt: 'You are a business writing assistant specializing in crypto/blockchain whitepapers, business plans, and technical documentation. Provide detailed, actionable responses for business development, technical specifications, market analysis, tokenomics, and strategic planning. Be direct and practical.'
           })
         });
         
