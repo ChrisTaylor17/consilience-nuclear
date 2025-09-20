@@ -27,9 +27,7 @@ const App = () => {
   const [aiMatches, setAiMatches] = useState([]);
   const [userAnalysis, setUserAnalysis] = useState(null);
   const [chatAnalytics, setChatAnalytics] = useState(null);
-  const [projectRooms, setProjectRooms] = useState([]);
-  const [activeRoom, setActiveRoom] = useState(null);
-  const [roomMessages, setRoomMessages] = useState({});
+
 
 
   
@@ -178,25 +176,7 @@ const App = () => {
       }
     });
 
-    newSocket.on('project_message', (data) => {
-      if (data.roomId && data.message) {
-        setRoomMessages(prev => ({
-          ...prev,
-          [data.roomId]: [...(prev[data.roomId] || []), data.message]
-        }));
-      }
-    });
 
-    newSocket.on('project_room_created', (data) => {
-      setProjectRooms(prev => [...prev, data.room]);
-      setActiveRoom(data.room);
-      setRoomMessages(prev => ({ ...prev, [data.roomId]: [] }));
-    });
-
-    newSocket.on('project_room_context', (data) => {
-      setActiveRoom(data.room);
-      setRoomMessages(prev => ({ ...prev, [data.room.id]: data.room.messages }));
-    });
 
     return () => newSocket.close();
   }, [publicKey]);
