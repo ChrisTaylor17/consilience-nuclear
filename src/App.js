@@ -21,6 +21,8 @@ const App = () => {
   const [tokenName, setTokenName] = useState('');
   const [tokens, setTokens] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [csTokenBalance, setCsTokenBalance] = useState(0);
+  const [csTokenData, setCsTokenData] = useState(null);
 
   
   const channels = ['general', 'ai-chat', 'tasks', 'dev', 'random'];
@@ -114,8 +116,20 @@ const App = () => {
   useEffect(() => {
     if (connected && publicKey) {
       getWalletBalance();
+      // Load CS token balance from localStorage
+      const savedBalance = localStorage.getItem(`cs-balance-${publicKey.toString()}`);
+      if (savedBalance) {
+        setCsTokenBalance(parseInt(savedBalance));
+      }
     }
   }, [connected, publicKey, getWalletBalance]);
+
+  useEffect(() => {
+    // Save CS token balance
+    if (publicKey && csTokenBalance > 0) {
+      localStorage.setItem(`cs-balance-${publicKey.toString()}`, csTokenBalance.toString());
+    }
+  }, [csTokenBalance, publicKey]);
 
   const createToken = async () => {
     if (!connected || !publicKey) {
@@ -214,6 +228,7 @@ const App = () => {
     if (!input.toLowerCase().startsWith('/ai ')) {
       const participationReward = Math.floor(Math.random() * 20) + 5; // 5-25 tokens
       await awardTokens(publicKey.toString(), participationReward, 'Chat participation');
+      setCsTokenBalance(prev => prev + participationReward);
     }
 
     if (socket) {
@@ -247,6 +262,7 @@ const App = () => {
         // Award CS tokens for AI interaction
         const tokenReward = Math.floor(Math.random() * 90) + 10; // 10-100 tokens
         await awardTokens(publicKey.toString(), tokenReward, 'AI interaction');
+        setCsTokenBalance(prev => prev + tokenReward);
         
         const aiMessage = {
           id: Date.now() + 1,
@@ -563,6 +579,26 @@ const App = () => {
               <h3 style={{
                 margin: '0 0 15px 0',
                 fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#ffffff',
+                textShadow: '0 0 20px #ffffff'
+              }}>CS Token Data</h3>
+              <div style={{
+                backgroundColor: '#000000',
+                padding: '10px',
+                marginBottom: '8px',
+                border: '2px solid #00ff00',
+                fontSize: '12px'
+              }}>
+                <div style={{ fontWeight: 'bold', color: '#00ff00' }}>CONSILIENCE (CS)</div>
+                <div>Balance: {csTokenBalance.toLocaleString()}</div>
+                <div style={{ fontSize: '10px', opacity: 0.7 }}>AI-Controlled Treasury</div>
+                <div style={{ fontSize: '10px', opacity: 0.7 }}>Earn by participating!</div>
+              </div>
+              
+              <h3 style={{
+                margin: '15px 0 10px 0',
+                fontSize: '14px',
                 fontWeight: 'bold',
                 color: '#ffffff',
                 textShadow: '0 0 20px #ffffff'
