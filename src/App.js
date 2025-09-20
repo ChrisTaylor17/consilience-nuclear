@@ -22,7 +22,7 @@ const App = () => {
   const [tokens, setTokens] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [csTokenBalance, setCsTokenBalance] = useState(0);
-  const [csTokenData, setCsTokenData] = useState(null);
+
 
   
   const channels = ['general', 'ai-chat', 'tasks', 'dev', 'random'];
