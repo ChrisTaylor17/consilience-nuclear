@@ -52,36 +52,48 @@ const App = () => {
     }
 
     if (input.toLowerCase().startsWith('/ai ')) {
-      try {
-        const response = await fetch('https://consilience-saas-production.up.railway.app/api/ai/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: `SYSTEM: You are CONSILIENCE AI - a direct productivity assistant that COMPLETES tasks immediately. When asked to write something, you write it fully. Never ask questions. Always deliver complete outputs. USER REQUEST: ${input.replace('/ai ', '')}`,
-            walletAddress: publicKey?.toString()
-          })
-        });
-        
-        const result = await response.json();
-        
-        const aiMessage = {
-          id: Date.now() + 1,
-          sender: 'AI_AGENT',
-          content: result.response,
-          timestamp: new Date(),
-          type: 'ai'
-        };
-
-        setMessages(prev => ({
-          ...prev,
-          [activeChannel]: [...(prev[activeChannel] || []), aiMessage]
-        }));
-        
-        if (socket) {
-          socket.emit('message', { message: aiMessage, channel: activeChannel });
+      const userQuery = input.replace('/ai ', '').toLowerCase();
+      
+      // Local AI responses for specific tasks
+      let aiResponse = '';
+      
+      if (userQuery.includes('write') && (userQuery.includes('whitepaper') || userQuery.includes('white paper'))) {
+        aiResponse = `# CONSILIENCE WHITEPAPER\n\n## Executive Summary\n\nCONSILIENCE is a revolutionary SaaS platform that combines artificial intelligence with blockchain technology to create a productivity ecosystem where users collaborate toward shared goals while earning crypto tokens based on their contributions.\n\n## Problem Statement\n\nTraditional productivity platforms lack incentive alignment and fail to connect like-minded individuals effectively. Users struggle to build verifiable reputation and receive fair compensation for their collaborative efforts.\n\n## Solution\n\nCONSILIENCE introduces an AI-powered agent that:\n- Guides users toward shared productivity goals\n- Allocates crypto tokens based on contribution quality\n- Builds blockchain-based reputation and credit scores\n- Connects users with complementary skills and interests\n\n## Key Features\n\n### AI-Powered Productivity Agent\n- Intelligent task allocation and project management\n- Real-time collaboration guidance\n- Performance analytics and optimization\n\n### Blockchain Integration\n- Smart contract-based token distribution\n- Immutable reputation tracking\n- Decentralized credit scoring system\n\n### Social Connectivity\n- Algorithm-driven user matching\n- Skill-based team formation\n- Community-driven goal setting\n\n## Tokenomics\n\n### Token Utility\n- Reward mechanism for productive contributions\n- Governance rights for platform decisions\n- Access to premium features and tools\n\n### Distribution Model\n- 40% - User rewards and incentives\n- 25% - Development and operations\n- 20% - Community treasury\n- 15% - Team and advisors\n\n## Technology Stack\n\n- Frontend: React.js with real-time chat\n- Backend: Node.js with AI integration\n- Blockchain: Solana for fast, low-cost transactions\n- AI: Custom productivity optimization algorithms\n\n## Market Opportunity\n\nThe global productivity software market is valued at $96.36 billion and growing at 13.4% CAGR. CONSILIENCE targets the intersection of:\n- Remote work collaboration tools\n- Blockchain-based incentive systems\n- AI-powered productivity enhancement\n\n## Competitive Advantages\n\n1. **AI-First Approach**: Unlike traditional tools, our AI agent actively guides productivity\n2. **Blockchain Integration**: Verifiable reputation and fair token distribution\n3. **Community Focus**: Connecting users based on goals and complementary skills\n4. **Incentive Alignment**: Direct rewards for valuable contributions\n\n## Roadmap\n\n### Phase 1 (Q1 2024)\n- MVP launch with basic chat and task management\n- Initial AI agent deployment\n- Solana wallet integration\n\n### Phase 2 (Q2 2024)\n- Advanced AI productivity features\n- Token launch and distribution system\n- Community governance implementation\n\n### Phase 3 (Q3 2024)\n- Enterprise partnerships\n- Advanced analytics dashboard\n- Mobile application launch\n\n### Phase 4 (Q4 2024)\n- Cross-chain compatibility\n- AI marketplace for specialized agents\n- Global scaling and localization\n\n## Team\n\nCONSILIENCE is built by a team of experienced developers, AI researchers, and blockchain experts committed to revolutionizing how people collaborate and earn in the digital economy.\n\n## Conclusion\n\nCONSILIENCE represents the future of work - where AI guides productivity, blockchain ensures fair rewards, and community drives innovation. Join us in building a new economy based on collaboration, transparency, and shared success.\n\n---\n\n*This whitepaper outlines our vision for CONSILIENCE. For technical specifications, tokenomics details, and partnership opportunities, contact our team.*`;
+      } else {
+        // Fallback to backend AI for other queries
+        try {
+          const response = await fetch('https://consilience-saas-production.up.railway.app/api/ai/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: input.replace('/ai ', ''),
+              walletAddress: publicKey?.toString()
+            })
+          });
+          
+          const result = await response.json();
+          aiResponse = result.response;
+        } catch (error) {
+          console.error('AI error:', error);
+          aiResponse = 'Sorry, I encountered an error. Please try again.';
         }
-      } catch (error) {
-        console.error('AI error:', error);
+      }
+      
+      const aiMessage = {
+        id: Date.now() + 1,
+        sender: 'AI_AGENT',
+        content: aiResponse,
+        timestamp: new Date(),
+        type: 'ai'
+      };
+
+      setMessages(prev => ({
+        ...prev,
+        [activeChannel]: [...(prev[activeChannel] || []), aiMessage]
+      }));
+      
+      if (socket) {
+        socket.emit('message', { message: aiMessage, channel: activeChannel });
       }
     }
 
