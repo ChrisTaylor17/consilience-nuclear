@@ -19,6 +19,15 @@ const App = () => {
   
   const channels = ['general', 'ai-chat', 'tasks', 'dev', 'random'];
 
+  const getWalletBalance = useCallback(async () => {
+    try {
+      const balance = await connection.getBalance(publicKey);
+      setBalance(balance / LAMPORTS_PER_SOL);
+    } catch (error) {
+      console.error('Balance error:', error);
+    }
+  }, [connection, publicKey]);
+
   useEffect(() => {
     const newSocket = io('https://consilience-saas-production.up.railway.app');
     setSocket(newSocket);
@@ -40,15 +49,6 @@ const App = () => {
       getWalletBalance();
     }
   }, [connected, publicKey, getWalletBalance]);
-
-  const getWalletBalance = useCallback(async () => {
-    try {
-      const balance = await connection.getBalance(publicKey);
-      setBalance(balance / LAMPORTS_PER_SOL);
-    } catch (error) {
-      console.error('Balance error:', error);
-    }
-  }, [connection, publicKey]);
 
   const createToken = async () => {
     try {
