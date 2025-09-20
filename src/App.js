@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import io from 'socket.io-client';
 import OpenAI from 'openai';
 
@@ -39,7 +39,7 @@ const App = () => {
     if (connected && publicKey) {
       getWalletBalance();
     }
-  }, [connected, publicKey]);
+  }, [connected, publicKey, connection]);
 
   const getWalletBalance = async () => {
     try {
