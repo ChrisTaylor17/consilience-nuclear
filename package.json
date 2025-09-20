@@ -12,6 +12,7 @@
     "@solana/web3.js": "^1.98.4",
     "buffer": "^6.0.3",
     "crypto-browserify": "^3.12.1",
+    "openai": "^5.22.0",
     "process": "^0.11.10",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
