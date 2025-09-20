@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { Connection, LAMPORTS_PER_SOL, Keypair, Transaction } from '@solana/web3.js';
+import { Connection, LAMPORTS_PER_SOL, Keypair } from '@solana/web3.js';
 import { createMint, getOrCreateAssociatedTokenAccount, mintTo } from '@solana/spl-token';
 import io from 'socket.io-client';
 import OpenAI from 'openai';
