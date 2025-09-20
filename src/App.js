@@ -22,6 +22,8 @@ const App = () => {
   const [tokens, setTokens] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [csTokenBalance, setCsTokenBalance] = useState(0);
+  const [connections, setConnections] = useState([]);
+  const [projectTokens, setProjectTokens] = useState([]);
 
 
   
@@ -55,6 +57,41 @@ const App = () => {
       });
     } catch (error) {
       console.error('Token award error:', error);
+    }
+  };
+
+  const createProjectToken = async (walletAddress, projectDescription) => {
+    try {
+      const response = await fetch('https://consilience-saas-production.up.railway.app/api/blockchain/create-project-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress, projectDescription })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setProjectTokens(prev => [...prev, result]);
+        
+        const projectMessage = {
+          id: Date.now() + 3,
+          sender: 'AI_AGENT',
+          content: `🚀 PROJECT TOKEN CREATED!\n\nProject: ${result.projectName}\nToken: ${result.symbol}\nYour Allocation: ${result.allocation} tokens\nTotal Supply: ${result.totalSupply}\n\nAI Treasury holds remaining tokens for fair distribution.`,
+          timestamp: new Date(),
+          type: 'ai'
+        };
+        
+        setMessages(prev => {
+          const updated = {
+            ...prev,
+            [activeChannel]: [...(prev[activeChannel] || []), projectMessage]
+          };
+          localStorage.setItem('consilience-messages', JSON.stringify(updated));
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.error('Project token creation error:', error);
     }
   };
 
@@ -282,11 +319,27 @@ const App = () => {
       return updated;
     });
 
-    // Award tokens for participation
+    // Award tokens for participation and track connections
     if (!input.toLowerCase().startsWith('/ai ')) {
       const participationReward = Math.floor(Math.random() * 20) + 5; // 5-25 tokens
       await awardTokens(publicKey.toString(), participationReward, 'Chat participation');
       setCsTokenBalance(prev => prev + participationReward);
+      
+      // Track connection
+      const connection = {
+        wallet: publicKey.toString(),
+        channel: activeChannel,
+        timestamp: new Date(),
+        lastMessage: input.slice(0, 50)
+      };
+      
+      setConnections(prev => {
+        const existing = prev.find(c => c.wallet === connection.wallet && c.channel === connection.channel);
+        if (existing) {
+          return prev.map(c => c.wallet === connection.wallet && c.channel === connection.channel ? connection : c);
+        }
+        return [...prev, connection];
+      });
     }
 
     if (socket) {
@@ -328,6 +381,11 @@ const App = () => {
         const tokenReward = Math.floor(Math.random() * 90) + 10; // 10-100 tokens
         await awardTokens(publicKey.toString(), tokenReward, 'AI interaction');
         setCsTokenBalance(prev => prev + tokenReward);
+        
+        // Check if AI is creating project tokens
+        if (aiResponse.toLowerCase().includes('project') || aiResponse.toLowerCase().includes('token')) {
+          await createProjectToken(publicKey.toString(), input);
+        }
         
         const aiMessage = {
           id: Date.now() + 1,
@@ -688,6 +746,27 @@ const App = () => {
                 fontWeight: 'bold',
                 color: '#ffffff',
                 textShadow: '0 0 20px #ffffff'
+              }}>Project Tokens</h3>
+              {projectTokens.map((token, i) => (
+                <div key={i} style={{
+                  backgroundColor: '#000000',
+                  padding: '10px',
+                  marginBottom: '8px',
+                  border: '2px solid #00ff00',
+                  fontSize: '12px'
+                }}>
+                  <div style={{ fontWeight: 'bold', color: '#00ff00' }}>{token.projectName}</div>
+                  <div>{token.symbol} - {token.allocation}</div>
+                  <div style={{ fontSize: '10px', opacity: 0.7 }}>AI Treasury: {token.aiHolding}</div>
+                </div>
+              ))}
+              
+              <h3 style={{
+                margin: '15px 0 10px 0',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                color: '#ffffff',
+                textShadow: '0 0 20px #ffffff'
               }}>My Tokens</h3>
               {tokens.map((token, i) => (
                 <div key={i} style={{
@@ -738,6 +817,27 @@ const App = () => {
             }}>
               <h3 style={{
                 margin: '0 0 15px 0',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#ffffff',
+                textShadow: '0 0 20px #ffffff'
+              }}>Connections</h3>
+              {connections.slice(0, 3).map((conn, i) => (
+                <div key={i} style={{
+                  backgroundColor: '#000000',
+                  padding: '8px',
+                  marginBottom: '5px',
+                  border: '2px solid #ffffff',
+                  fontSize: '10px'
+                }}>
+                  <div style={{ fontWeight: 'bold' }}>{conn.wallet.slice(0, 8)}...</div>
+                  <div style={{ opacity: 0.7 }}>#{conn.channel}</div>
+                  <div style={{ opacity: 0.7 }}>{conn.lastMessage}...</div>
+                </div>
+              ))}
+              
+              <h3 style={{
+                margin: '15px 0 15px 0',
                 fontSize: '16px',
                 fontWeight: 'bold',
                 color: '#ffffff',
