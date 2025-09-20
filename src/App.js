@@ -401,6 +401,27 @@ const App = () => {
         if (result.suggestedMatches) {
           setAiMatches(result.suggestedMatches);
         }
+        if (result.suggestedTeam) {
+          // Show team suggestions in a special message
+          const teamMessage = {
+            id: Date.now() + 2,
+            sender: 'AI_TEAM_BUILDER',
+            content: `👥 **Suggested Team Members:**\n\n${result.suggestedTeam.map(member => 
+              `• ${member.wallet}... as ${member.role} (${member.compatibility}% match)`
+            ).join('\n')}\n\nReady to build something amazing together!`,
+            timestamp: new Date(),
+            type: 'ai'
+          };
+          
+          setMessages(prev => {
+            const updated = {
+              ...prev,
+              [activeChannel]: [...(prev[activeChannel] || []), teamMessage]
+            };
+            localStorage.setItem('consilience-messages', JSON.stringify(updated));
+            return updated;
+          });
+        }
         
         // Check if user wants NFT creation
         const userInput = input.replace('/ai ', '').toLowerCase();
@@ -740,7 +761,7 @@ const App = () => {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                  placeholder={`Message #${activeChannel}... (use /ai for AI matching)`}
+                  placeholder={`Message #${activeChannel}... (use /ai for smart matching & introductions)`}
                   style={{
                     flex: 1,
                     padding: '15px 20px',
@@ -796,11 +817,15 @@ const App = () => {
                   border: '2px solid #00ffff',
                   fontSize: '12px'
                 }}>
-                  <div style={{ fontWeight: 'bold', color: '#00ffff' }}>Your Profile</div>
-                  <div>Skills: {userAnalysis.skills.join(', ') || 'Learning...'}</div>
-                  <div>Interests: {userAnalysis.interests.join(', ') || 'Exploring...'}</div>
-                  <div>Style: {userAnalysis.messageStyle}</div>
-                  <div>Activity: {userAnalysis.activity} messages</div>
+                  <div style={{ fontWeight: 'bold', color: '#00ffff' }}>Your AI Profile</div>
+                  <div>Skills: {userAnalysis.skills?.join(', ') || 'Learning...'}</div>
+                  <div>Interests: {userAnalysis.interests?.join(', ') || 'Exploring...'}</div>
+                  <div>Style: {userAnalysis.communicationStyle || userAnalysis.messageStyle}</div>
+                  <div>Level: {userAnalysis.expertise || 'Intermediate'}</div>
+                  <div>Activity: {userAnalysis.activityLevel || userAnalysis.activity} </div>
+                  {userAnalysis.collaborationPreference && (
+                    <div>Prefers: {userAnalysis.collaborationPreference} work</div>
+                  )}
                 </div>
               )}
               
@@ -820,13 +845,17 @@ const App = () => {
                   fontSize: '12px',
                   cursor: 'pointer'
                 }} onClick={() => {
-                  const connectMsg = `/ai introduce me to ${match.walletAddress.slice(0,8)} for collaboration`;
+                  const connectMsg = `/ai introduce me to ${match.walletAddress.slice(0,8)} for ${match.recommendedRole || 'collaboration'}`;
                   setInput(connectMsg);
                 }}>
                   <div style={{ fontWeight: 'bold', color: '#ff00ff' }}>{match.walletAddress.slice(0,8)}...</div>
-                  <div>{Math.round(match.score*100)}% match</div>
-                  <div style={{ fontSize: '10px', opacity: 0.7 }}>Skills: {match.commonSkills.join(', ')}</div>
-                  <div style={{ fontSize: '10px', color: '#ff00ff' }}>Click to connect!</div>
+                  <div>{Math.round(match.score*100)}% compatibility</div>
+                  <div style={{ fontSize: '10px', opacity: 0.7 }}>Role: {match.recommendedRole || 'Collaborator'}</div>
+                  <div style={{ fontSize: '10px', opacity: 0.7 }}>Skills: {match.commonSkills?.join(', ') || 'Complementary'}</div>
+                  {match.collaborationPotential && (
+                    <div style={{ fontSize: '10px', color: '#00ff00' }}>Success: {Math.round(match.collaborationPotential.score*100)}%</div>
+                  )}
+                  <div style={{ fontSize: '10px', color: '#ff00ff' }}>Click for intro!</div>
                 </div>
               ))}
               
@@ -942,10 +971,16 @@ const App = () => {
                   border: '2px solid #00ff00',
                   fontSize: '12px'
                 }}>
-                  <div style={{ fontWeight: 'bold', color: '#00ff00' }}>Platform Stats</div>
-                  <div>Active Users: {chatAnalytics.activeUsers}</div>
-                  <div>Total Messages: {chatAnalytics.totalMessages}</div>
-                  <div>Top Skills: {Object.keys(chatAnalytics.topSkills).slice(0,3).join(', ')}</div>
+                  <div style={{ fontWeight: 'bold', color: '#00ff00' }}>Platform Intelligence</div>
+                  <div>Active: {chatAnalytics.activeUsers}/{chatAnalytics.totalUsers} users</div>
+                  <div>Messages: {chatAnalytics.totalMessages}</div>
+                  <div>Interactions: {chatAnalytics.totalInteractions || 0}</div>
+                  <div>Top Skills: {Object.keys(chatAnalytics.topSkills || {}).slice(0,2).join(', ')}</div>
+                  {chatAnalytics.platformHealth && (
+                    <div style={{ fontSize: '10px', color: '#00ff00' }}>
+                      Health: {Math.round(chatAnalytics.platformHealth.activeUserRatio * 100)}% active
+                    </div>
+                  )}
                 </div>
               )}
               
