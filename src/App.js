@@ -56,7 +56,7 @@ const App = () => {
 
   const awardTokens = async (walletAddress, amount, reason) => {
     try {
-      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/blockchain/award-tokens`, {
+      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/blockchain/award-tokens`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress, amount, reason })
@@ -74,7 +74,7 @@ const App = () => {
       const imageUrl = `https://picsum.photos/400/400?random=${Date.now()}`;
       const nftName = `CONSILIENCE NFT #${Date.now().toString().slice(-4)}`;
       
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/blockchain/create-nft`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/blockchain/create-nft`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress, nftName, imageUrl })
@@ -162,7 +162,7 @@ const App = () => {
   }, [connection, publicKey]);
 
   useEffect(() => {
-    const newSocket = io(process.env.REACT_APP_API_URL || 'http://localhost:3001');
+    const newSocket = io(process.env.REACT_APP_API_URL || 'http://localhost:5001');
     setSocket(newSocket);
     
     newSocket.on('message', (data) => {
@@ -200,7 +200,7 @@ const App = () => {
   const fetchAIMatches = useCallback(async () => {
     if (!publicKey) return;
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/ai/matches/${publicKey.toString()}`);
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/ai/matches/${publicKey.toString()}`);
       const data = await response.json();
       if (data.success) {
         setAiMatches(data.matches || []);
@@ -213,7 +213,7 @@ const App = () => {
   
   const fetchChatAnalytics = useCallback(async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/ai/analytics`);
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/ai/analytics`);
       const data = await response.json();
       if (data.success) {
         setChatAnalytics(data.analytics);
@@ -254,7 +254,7 @@ const App = () => {
     const name = tokenName || await generateTokenName();
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/blockchain/create-token`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/blockchain/create-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -390,7 +390,7 @@ const App = () => {
       
       // Use local AI service
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/ai/chat`, {
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/ai/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -439,7 +439,7 @@ const App = () => {
         const aiMessage = {
           id: Date.now() + 1,
           sender: 'SYSTEM',
-          content: `❌ AI service unavailable. Make sure backend is running on localhost:3001`,
+          content: `❌ AI service unavailable. Make sure backend is running on localhost:5001`,
           timestamp: new Date(),
           type: 'error'
         };
