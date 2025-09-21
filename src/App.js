@@ -15,7 +15,7 @@ const App = () => {
   const [aiMatches, setAiMatches] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
-  const [isTyping, setIsTyping] = useState(false);
+  const [isTyping] = useState(false);
 
   const getWalletBalance = useCallback(async () => {
     if (!publicKey) return;
