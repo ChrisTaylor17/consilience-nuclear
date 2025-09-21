@@ -12,7 +12,7 @@ const App = () => {
   const [balance, setBalance] = useState(0);
   const [connection] = useState(new Connection('https://api.devnet.solana.com'));
   const [activeUsers, setActiveUsers] = useState([]);
-  const [userProfile, setUserProfile] = useState(null);
+  // const [userProfile, setUserProfile] = useState(null);
   const [aiMatches, setAiMatches] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
