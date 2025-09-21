@@ -1,80 +1,140 @@
 const express = require('express');
 const cors = require('cors');
-const { Connection, Keypair, PublicKey } = require('@solana/web3.js');
-const { createMint, getOrCreateAssociatedTokenAccount, mintTo } = require('@solana/spl-token');
+const http = require('http');
+const socketIo = require('socket.io');
+const helmet = require('helmet');
+const compression = require('compression');
+const winston = require('winston');
 require('dotenv').config();
 
+const { initDatabase, redis } = require('./config/database');
+const { rateLimiter } = require('./middleware/auth');
+const userService = require('./services/userService');
+const projectService = require('./services/projectService');
+
+// Logger setup
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' }),
+    new winston.transports.Console()
+  ]
+});
+
 const app = express();
-app.use(cors());
-app.use(express.json());
-
-const connection = new Connection('https://api.devnet.solana.com');
-
-// Server wallet keypair (you need to fund this with SOL)
-const serverKeypair = Keypair.generate();
-
-app.post('/api/create-token', async (req, res) => {
-  try {
-    const { walletAddress } = req.body;
-    
-    if (!walletAddress) {
-      return res.status(400).json({ error: 'Wallet address required' });
-    }
-
-    const userPublicKey = new PublicKey(walletAddress);
-
-    // Create the mint
-    const mint = await createMint(
-      connection,
-      serverKeypair, // Payer (server pays fees)
-      userPublicKey, // Mint authority (user controls minting)
-      userPublicKey, // Freeze authority
-      9 // Decimals
-    );
-
-    // Get or create user's token account
-    const tokenAccount = await getOrCreateAssociatedTokenAccount(
-      connection,
-      serverKeypair, // Payer
-      mint,
-      userPublicKey // Owner
-    );
-
-    // Mint 1,000,000 tokens to user
-    const mintTx = await mintTo(
-      connection,
-      serverKeypair, // Payer
-      mint,
-      tokenAccount.address,
-      userPublicKey, // Mint authority
-      1000000 * Math.pow(10, 9) // 1M tokens with 9 decimals
-    );
-
-    res.json({
-      success: true,
-      mint: mint.toString(),
-      tokenAccount: tokenAccount.address.toString(),
-      transaction: mintTx,
-      amount: '1,000,000',
-      symbol: 'CSL'
-    });
-
-  } catch (error) {
-    console.error('Token creation error:', error);
-    res.status(500).json({ 
-      error: error.message,
-      details: 'Make sure server wallet has SOL for fees'
-    });
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL : "*",
+    methods: ["GET", "POST"]
   }
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', wallet: serverKeypair.publicKey.toString() });
+// Security middleware
+app.use(helmet());
+app.use(compression());
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+app.use(rateLimiter(1000, 15 * 60 * 1000)); // 1000 requests per 15 minutes
+
+// Import routes
+const aiRoutes = require('./routes/ai');
+const blockchainRoutes = require('./routes/blockchain');
+const userRoutes = require('./routes/users');
+const projectRoutes = require('./routes/projects');
+
+// Use routes
+app.use('/api/ai', aiRoutes);
+app.use('/api/blockchain', blockchainRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/projects', projectRoutes);
+
+// Socket.io for real-time chat
+const activeUsers = new Set();
+const projectRooms = new Map();
+
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+  
+  socket.on('message', (data) => {
+    if (data.roomId) {
+      // Project room message
+      socket.to(data.roomId).emit('project_message', data);
+    } else {
+      // Channel message
+      socket.broadcast.emit('message', data);
+    }
+  });
+  
+  socket.on('create_project_room', (data) => {
+    const roomId = `room_${Date.now()}`;
+    const room = {
+      id: roomId,
+      name: data.projectName,
+      creator: data.walletAddress,
+      description: data.description,
+      members: [data.walletAddress],
+      createdAt: new Date()
+    };
+    
+    projectRooms.set(roomId, room);
+    socket.join(roomId);
+    
+    socket.emit('project_room_created', { room, roomId });
+  });
+  
+  socket.on('join_room', (roomId) => {
+    socket.join(roomId);
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
 });
 
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    activeUsers: activeUsers.size,
+    projectRooms: projectRooms.size,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Initialize database and start server
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Backend running on port ${PORT}`);
-  console.log(`Server wallet: ${serverKeypair.publicKey.toString()}`);
-  console.log('Fund this wallet with SOL on devnet to enable token creation');
+
+const startServer = async () => {
+  try {
+    await initDatabase();
+    await redis.connect();
+    
+    server.listen(PORT, () => {
+      logger.info(`🚀 CONSILIENCE NUCLEAR Backend running on port ${PORT}`);
+      logger.info(`✅ Database connected`);
+      logger.info(`✅ Redis connected`);
+      logger.info(`✅ AI matching system active`);
+      logger.info(`✅ Blockchain services ready`);
+      logger.info(`✅ Real-time chat enabled`);
+    });
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    redis.disconnect();
+    process.exit(0);
+  });
 });

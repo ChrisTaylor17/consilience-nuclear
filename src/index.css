@@ -1,0 +1,46 @@
+body {
+  margin: 0;
+  font-family: Monaco, "Lucida Console", monospace;
+  font-weight: bold;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Remove all text shadows and glows */
+h1, h2, h3, h4, h5, h6, div, span, p {
+  text-shadow: none !important;
+}
+
+/* Add rounded corners to all bordered elements */
+div[style*="border"] {
+  border-radius: 8px !important;
+}
+
+/* Specific overrides for larger elements */
+.main-container {
+  border-radius: 12px !important;
+}
+
+.sidebar {
+  border-radius: 0 12px 12px 0 !important;
+}
+
+.right-sidebar {
+  border-radius: 12px 0 0 12px !important;
+}
+
+.chat-message {
+  border-radius: 12px !important;
+}
+
+.input-field {
+  border-radius: 12px !important;
+}
+
+.button {
+  border-radius: 8px !important;
+}

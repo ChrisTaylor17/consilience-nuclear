@@ -56,7 +56,7 @@ const App = () => {
 
   const awardTokens = async (walletAddress, amount, reason) => {
     try {
-      await fetch('https://consilience-saas-production.up.railway.app/api/blockchain/award-tokens', {
+      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/blockchain/award-tokens`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress, amount, reason })
@@ -74,7 +74,7 @@ const App = () => {
       const imageUrl = `https://picsum.photos/400/400?random=${Date.now()}`;
       const nftName = `CONSILIENCE NFT #${Date.now().toString().slice(-4)}`;
       
-      const response = await fetch('https://consilience-saas-production.up.railway.app/api/blockchain/create-nft', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/blockchain/create-nft`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress, nftName, imageUrl })
@@ -162,7 +162,7 @@ const App = () => {
   }, [connection, publicKey]);
 
   useEffect(() => {
-    const newSocket = io('https://consilience-saas-production.up.railway.app');
+    const newSocket = io(process.env.REACT_APP_API_URL || 'http://localhost:3001');
     setSocket(newSocket);
     
     newSocket.on('message', (data) => {
@@ -200,7 +200,7 @@ const App = () => {
   const fetchAIMatches = useCallback(async () => {
     if (!publicKey) return;
     try {
-      const response = await fetch(`https://consilience-saas-production.up.railway.app/api/ai/matches/${publicKey.toString()}`);
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/ai/matches/${publicKey.toString()}`);
       const data = await response.json();
       if (data.success) {
         setAiMatches(data.matches || []);
@@ -213,7 +213,7 @@ const App = () => {
   
   const fetchChatAnalytics = useCallback(async () => {
     try {
-      const response = await fetch('https://consilience-saas-production.up.railway.app/api/ai/analytics');
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/ai/analytics`);
       const data = await response.json();
       if (data.success) {
         setChatAnalytics(data.analytics);
@@ -254,7 +254,7 @@ const App = () => {
     const name = tokenName || await generateTokenName();
 
     try {
-      const response = await fetch('https://consilience-saas-production.up.railway.app/api/blockchain/create-token', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/blockchain/create-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -374,7 +374,7 @@ const App = () => {
       
       // Direct matching for connection requests
       if (hasConnectIntent) {
-        const projectName = prompt('Project name:') || `Collaboration ${Date.now().toString().slice(-4)}`;
+        const projectName = prompt('Project name:') || `Project ${Date.now().toString().slice(-4)}`;
         
         if (socket) {
           socket.emit('create_project_room', {
@@ -384,34 +384,13 @@ const App = () => {
           });
         }
         
-        const tokenReward = Math.floor(Math.random() * 90) + 10;
-        await awardTokens(publicKey.toString(), tokenReward, 'Project creation');
-        setCsTokenBalance(prev => prev + tokenReward);
-        
-        const aiMessage = {
-          id: Date.now() + 1,
-          sender: 'PROJECT_CREATOR',
-          content: `🚀 **PROJECT ROOM CREATED!**\n\n**${projectName}**\n\n✨ **Features:**\n• Dedicated AI assistant\n• Real-time collaboration\n• Smart task management\n• Multi-user chat\n\n🎯 **Share the room ID with collaborators to join!**\n\n🪙 +${tokenReward} CS tokens awarded!`,
-          timestamp: new Date(),
-          type: 'ai'
-        };
-
-        setMessages(prev => {
-          const updated = {
-            ...prev,
-            [activeChannel]: [...(prev[activeChannel] || []), aiMessage]
-          };
-          localStorage.setItem('consilience-messages', JSON.stringify(updated));
-          return updated;
-        });
-        
         setInput('');
         return;
       }
       
-      // For other AI requests, try backend first
+      // Use local AI service
       try {
-        const response = await fetch('https://consilience-saas-production.up.railway.app/api/ai/chat', {
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/ai/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -437,7 +416,7 @@ const App = () => {
         const aiMessage = {
           id: Date.now() + 1,
           sender: 'AI_AGENT',
-          content: `${aiResponse}\n\n🪙 +${tokenReward} CS tokens awarded!`,
+          content: aiResponse,
           timestamp: new Date(),
           type: 'ai'
         };
@@ -457,17 +436,12 @@ const App = () => {
       } catch (error) {
         console.error('AI service error:', error);
         
-        // Simple fallback response
-        const tokenReward = Math.floor(Math.random() * 90) + 10;
-        await awardTokens(publicKey.toString(), tokenReward, 'AI interaction');
-        setCsTokenBalance(prev => prev + tokenReward);
-        
         const aiMessage = {
           id: Date.now() + 1,
-          sender: 'AI_AGENT',
-          content: `AI matching system is learning from your messages. Keep chatting to improve matches!\n\n🪙 +${tokenReward} CS tokens awarded!`,
+          sender: 'SYSTEM',
+          content: `❌ AI service unavailable. Make sure backend is running on localhost:3001`,
           timestamp: new Date(),
-          type: 'ai'
+          type: 'error'
         };
 
         setMessages(prev => {
@@ -510,7 +484,8 @@ const App = () => {
       minHeight: '100vh',
       backgroundColor: '#000000',
       color: '#ffffff',
-      fontFamily: 'Courier New, monospace',
+      fontFamily: 'Monaco, "Lucida Console", monospace',
+      fontWeight: 'bold',
       display: 'flex'
     }}>
       {connected ? (
@@ -522,20 +497,20 @@ const App = () => {
             borderRight: '2px solid #ffffff',
             display: 'flex',
             flexDirection: 'column',
-            boxShadow: '0 0 20px rgba(255,255,255,0.1)'
+            borderRadius: '0 12px 12px 0'
           }}>
             {/* Header */}
             <div style={{
               padding: '20px',
               borderBottom: '2px solid #ffffff',
+              borderRadius: '0 12px 0 0',
               textAlign: 'center'
             }}>
               <h1 style={{
                 fontSize: '18px',
                 fontWeight: 'bold',
                 margin: 0,
-                color: '#ffffff',
-                textShadow: '0 0 20px #ffffff'
+                color: '#ffffff'
               }}>🚀 CONSILIENCE</h1>
             </div>
 
@@ -544,8 +519,7 @@ const App = () => {
               padding: '15px',
               borderBottom: '2px solid #ffffff',
               cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              ':hover': { backgroundColor: '#2a2a2a' }
+              transition: 'all 0.3s ease'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{
@@ -557,7 +531,8 @@ const App = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '14px',
-                  fontWeight: 'bold'
+                  fontWeight: 'bold',
+                  borderRadius: '8px'
                 }}>
                   {publicKey?.toString().slice(0, 2).toUpperCase()}
                 </div>
@@ -565,7 +540,7 @@ const App = () => {
                   <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
                     {publicKey?.toString().slice(0, 8)}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#ffffff', textShadow: '0 0 10px #ffffff' }}>● {balance.toFixed(2)} SOL</div>
+                  <div style={{ fontSize: '12px', color: '#ffffff' }}>● {balance.toFixed(2)} SOL</div>
                 </div>
               </div>
             </div>
@@ -578,8 +553,7 @@ const App = () => {
                 fontWeight: 'bold',
                 padding: '0 20px 10px',
                 textTransform: 'uppercase',
-                letterSpacing: '2px',
-                textShadow: '0 0 10px #ffffff'
+                letterSpacing: '2px'
               }}>Channels</div>
               {channels.map(channel => (
                 <div
@@ -594,7 +568,7 @@ const App = () => {
                     margin: '2px 10px',
                     fontSize: '14px',
                     fontWeight: 'bold',
-                    textShadow: activeChannel === channel ? 'none' : '0 0 10px #ffffff'
+                    borderRadius: '8px'
                   }}
                 >
                   # {channel}
@@ -616,7 +590,9 @@ const App = () => {
                   color: '#ffffff',
                   fontSize: '12px',
                   marginBottom: '10px',
-                  outline: 'none'
+                  outline: 'none',
+                  borderRadius: '8px',
+                  fontWeight: 'bold'
                 }}
               />
               <button
@@ -628,9 +604,9 @@ const App = () => {
                   padding: '10px',
                   color: '#ffffff',
                   fontWeight: 'bold',
-                  textShadow: '0 0 10px #ffffff',
                   marginBottom: '10px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  borderRadius: '8px'
                 }}
               >
                 CREATE TOKEN
@@ -647,9 +623,9 @@ const App = () => {
                   padding: '10px',
                   color: '#ff00ff',
                   fontWeight: 'bold',
-                  textShadow: '0 0 10px #ff00ff',
                   marginBottom: '10px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  borderRadius: '8px'
                 }}
               >
                 CREATE NFT
@@ -661,7 +637,7 @@ const App = () => {
                 padding: '10px',
                 color: '#ffffff',
                 fontWeight: 'bold',
-                textShadow: '0 0 10px #ffffff'
+                borderRadius: '8px'
               }} />
             </div>
           </div>
@@ -675,14 +651,14 @@ const App = () => {
               borderBottom: '2px solid #ffffff',
               display: 'flex',
               alignItems: 'center',
-              padding: '0 30px'
+              padding: '0 30px',
+              borderRadius: '12px 0 0 0'
             }}>
               <h2 style={{
                 margin: 0,
                 fontSize: '20px',
                 fontWeight: 'bold',
-                color: activeRoom ? '#00ff00' : '#ffffff',
-                textShadow: '0 0 20px #ffffff'
+                color: activeRoom ? '#00ff00' : '#ffffff'
               }}>{activeRoom ? `🚀 ${activeRoom.name}` : `#${activeChannel}`}</h2>
               {activeRoom && (
                 <button
@@ -694,7 +670,9 @@ const App = () => {
                     border: '1px solid #ffffff',
                     color: '#ffffff',
                     fontSize: '12px',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    borderRadius: '6px',
+                    fontWeight: 'bold'
                   }}
                 >
                   Leave Room
@@ -718,14 +696,14 @@ const App = () => {
                     backgroundColor: '#000000',
                     padding: '15px 20px',
                     border: msg.sender === 'PROJECT_AI' ? '2px solid #00ff00' : '2px solid #ffffff',
-                    margin: '5px 0'
+                    margin: '5px 0',
+                    borderRadius: '12px'
                   }}>
                     <div style={{
                       fontSize: '12px',
                       color: msg.sender === 'PROJECT_AI' ? '#00ff00' : '#ffffff',
                       fontWeight: 'bold',
-                      marginBottom: '5px',
-                      textShadow: '0 0 10px #ffffff'
+                      marginBottom: '5px'
                     }}>
                       {msg.sender === 'PROJECT_AI' ? '🤖 Project AI' : msg.sender?.slice(0, 8)}
                     </div>
@@ -743,14 +721,14 @@ const App = () => {
                     backgroundColor: '#000000',
                     padding: '15px 20px',
                     border: '2px solid #ffffff',
-                    margin: '5px 0'
+                    margin: '5px 0',
+                    borderRadius: '12px'
                   }}>
                     <div style={{
                       fontSize: '12px',
                       color: '#ffffff',
                       fontWeight: 'bold',
-                      marginBottom: '5px',
-                      textShadow: '0 0 10px #ffffff'
+                      marginBottom: '5px'
                     }}>
                       {msg.sender === 'AI_AGENT' ? '🤖 AI Assistant' : msg.sender?.slice(0, 8)}
                     </div>
@@ -768,7 +746,8 @@ const App = () => {
             <div style={{
               padding: '20px 30px',
               backgroundColor: '#000000',
-              borderTop: '2px solid #ffffff'
+              borderTop: '2px solid #ffffff',
+              borderRadius: '0 0 0 12px'
             }}>
               <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                 <input
@@ -783,7 +762,9 @@ const App = () => {
                     border: '2px solid #ffffff',
                     color: '#ffffff',
                     fontSize: '14px',
-                    outline: 'none'
+                    outline: 'none',
+                    borderRadius: '12px',
+                    fontWeight: 'bold'
                   }}
                 />
                 <button
@@ -795,7 +776,8 @@ const App = () => {
                     border: '2px solid #ffffff',
                     fontWeight: 'bold',
                     cursor: 'pointer',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    borderRadius: '12px'
                   }}
                 >
                   Send
@@ -879,7 +861,7 @@ const App = () => {
                 fontWeight: 'bold',
                 color: '#ffffff',
                 textShadow: '0 0 20px #ffffff'
-              }}>CS Token Data</h3>
+              }}>CS Tokens</h3>
               <div style={{
                 backgroundColor: '#000000',
                 padding: '10px',
@@ -887,12 +869,8 @@ const App = () => {
                 border: '2px solid #00ff00',
                 fontSize: '12px'
               }}>
-                <div style={{ fontWeight: 'bold', color: '#00ff00' }}>CONSILIENCE (CS)</div>
-                <div>Your Balance: {csTokenBalance.toLocaleString()}</div>
-                <div style={{ fontSize: '10px', opacity: 0.7 }}>Total Supply: 1,000,000,000</div>
-                <div style={{ fontSize: '10px', opacity: 0.7 }}>Circulating: {(csTokenBalance * 1000).toLocaleString()}</div>
-                <div style={{ fontSize: '10px', opacity: 0.7 }}>AI Treasury: 999M+ CS</div>
-                <div style={{ fontSize: '10px', color: '#00ff00' }}>Earn: Chat +5-25, AI +10-100</div>
+                <div style={{ fontWeight: 'bold', color: '#00ff00' }}>Balance: {csTokenBalance}</div>
+                <div style={{ fontSize: '10px', opacity: 0.7 }}>Earned from platform usage</div>
               </div>
               
 
